@@ -108,15 +108,7 @@ function getVectorCosineDistance(aVector, bVector) {
     const aL2Norm = Math.sqrt(aSumOfSquaresOfCoordinates);
     const bL2Norm = Math.sqrt(bSumOfSquaresOfCoordinates);
 
-    const cosineDistance = scalarProduct/aL2Norm/bL2Norm;
-
-    if (cosineDistance > 1) {
-        return 1;
-    } else if (cosineDistance < -1) {
-        return -1;
-    }
-
-    return cosineDistance;
+    return scalarProduct/aL2Norm/bL2Norm;
 }
 
 function getNGramsCosineDistance(templateModel, searchModel) {
