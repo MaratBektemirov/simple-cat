@@ -1,12 +1,12 @@
 {
-    "compilerOptions": {
-      "target": "es2016",
-      "module": "commonjs",
-      "esModuleInterop": true,
-      "forceConsistentCasingInFileNames": true,
-      "strict": true,
-      "skipLibCheck": true,
-      "noImplicitAny": false
-    }
-  }
-  
+  "compilerOptions": {
+    "target": "es5",
+    "module": "commonjs",
+    "declaration": true,
+    "outDir": "./",
+    "strict": false,
+    "sourceMap": true
+  },
+  "include": ["ts"],
+  "exclude": ["node_modules"]
+}

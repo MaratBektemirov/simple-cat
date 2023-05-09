@@ -10,7 +10,7 @@ const test = new SimpleCat([
     {text: `Счастливая душа — это огромное достоинство`, descriptor: {}},
   ], smallTextModel);
 
-const result = test.run('человеческая душа - прекрасна');
+const result = test.match('человеческая душа - прекрасна');
 
 console.log(result);
 
@@ -72,7 +72,7 @@ const test = new SimpleCat([
     {text: `размышление`, descriptor: {}},
   ], smallTextModel);
 
-const result = test.run('размышляющий');
+const result = test.match('размышляющий');
 
 console.log(result);
 
