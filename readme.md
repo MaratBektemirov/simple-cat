@@ -8,7 +8,7 @@ const test = new SimpleCat([
     {text: `В человеке должно быть всё прекрасно: и лицо, и одежда, и душа, и мысли`, descriptor: {}},
     {text: `Душа не двери: если часто открывать, сквозняки продувают тебя насквозь`, descriptor: {}},
     {text: `Счастливая душа — это огромное достоинство`, descriptor: {}},
-  ], smallTextModel);
+  ], textModel);
 
 const result = test.match('человеческая душа - прекрасна');
 
@@ -70,7 +70,7 @@ cos(a,b) = 0.1111111119389534
 ```
 const test = new SimpleCat([
     {text: `размышление`, descriptor: {}},
-  ], smallTextModel);
+  ], textModel);
 
 const result = test.match('размышляющий');
 

@@ -20,25 +20,32 @@ interface ITextOption<A> {
     descriptor: A
 }
 
-function getNGrams(text: string, gramSize: number) {
+const wordRegexp = /[^A-Za-zА-Яа-я ]/g;
+const splitWordRegexp = /\s+/g;
+
+const standartTextModel: TextToModel = (text: string) => {
+    const gramSize = 3;
+    const words = text.split(splitWordRegexp);
+
+    const { grams, negGrams, length } = getNGrams(words, gramSize);
+
+    const negVector = new Int8Array(length);
+    const vector = new Int8Array(length);
+
+    negVector.fill(-1);
+    vector.fill(1);
+
+    return { grams, negGrams, vector, negVector, length };
+}
+
+function getNGrams(words: string[], gramSize: number) {
     if (typeof gramSize !== 'number') {
         console.error('Please define size of grams');
     }
 
     const grams = {};
     const negGrams = {};
-
-    let cursor = 0;
-    let index = 0;
-
-    while (text[cursor + gramSize - 1]) {
-        let gram = text.slice(cursor, cursor + gramSize);
-
-        if (gram.indexOf(' ') !== -1) {
-            cursor++;
-            continue;
-        }
-
+    const addGram = (gram: string, index: number) => {
         let newArrayLength = 1;
         let oldArray;
         let oldNegArray;
@@ -62,31 +69,35 @@ function getNGrams(text: string, gramSize: number) {
 
         grams[gram] = newArr;
         negGrams[gram] = newNegArr;
+    };
 
-        cursor++;
-        index++;
+    let i = 0;
+    let index = 0;
+
+    while (words[i]) {
+        const word = words[i].toLowerCase().replace(wordRegexp, '');
+
+        if (word.length < gramSize) {
+            addGram(word, index);
+            index++;
+        } else {
+            let j = 0;
+            while (word[j + gramSize - 1]) {
+                let gram = word.slice(j, j + gramSize);
+    
+                addGram(gram, index);
+    
+                j++;
+                index++;
+            }
+        }
+
+        i++;
     }
 
     const length = index;
 
     return { grams, negGrams, length };
-}
-
-const stRegexp = /[^A-Za-zА-Яа-я ]/g;
-
-function smallTextModel(text): ITextModel {
-    const gramSize = 3;
-    text = text.toLowerCase().replace(stRegexp, '');
-
-    const { grams, length, negGrams } = getNGrams(text, gramSize);
-
-    const negVector = new Int8Array(length);
-    const vector = new Int8Array(length);
-
-    negVector.fill(-1);
-    vector.fill(1);
-
-    return { grams, negGrams, vector, negVector, length };
 }
 
 function getPositionVector(negTemplateGrams: NGrams, templateModelLength: number, model: ITextModel) {
@@ -247,7 +258,7 @@ class SimpleCat<D> {
 }
 
 export { 
-    smallTextModel,
+    standartTextModel,
     getNGrams,
     getMatchVector,
     getVectorCosineDistance,

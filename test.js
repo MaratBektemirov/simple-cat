@@ -4,12 +4,12 @@ const {
   getVectorCosineDistance, 
   getNGramsSpaceCosineDistance, 
   SimpleCat,
-  smallTextModel,
+  standartTextModel,
   MatchFunctionType,
 } = require('./index.js');
 
 test('check grams 1', () => {
-  const { grams, negGrams } = getNGrams('проверка', 3);
+  const { grams, negGrams } = getNGrams(['проверка'], 3);
 
   expect(grams).toStrictEqual({
     'про': new Int8Array([0]),
@@ -31,7 +31,7 @@ test('check grams 1', () => {
 });
 
 test('check grams 2', () => {
-  const { grams, negGrams } = getNGrams('парампампам', 3);
+  const { grams, negGrams } = getNGrams(['парампампам'], 3);
 
   expect(grams).toStrictEqual({
     'пар': new Int8Array([0]),
@@ -53,7 +53,7 @@ test('check grams 2', () => {
 });
 
 test('check grams 3', () => {
-  const { grams, negGrams } = getNGrams('проверка', 2);
+  const { grams, negGrams } = getNGrams(['проверка'], 2);
 
   expect(grams).toStrictEqual({
     'пр': new Int8Array([0]),
@@ -77,7 +77,7 @@ test('check grams 3', () => {
 });
 
 test('check grams 4', () => {
-  const { grams, negGrams } = getNGrams('парампампампам', 3);
+  const { grams, negGrams } = getNGrams(['парампампампам'], 3);
 
   expect(grams).toStrictEqual({
     'амп': new Int8Array([3,6,9]),
@@ -99,17 +99,17 @@ test('check grams 4', () => {
 })
 
 test('check grams vector 1', () => { 
-  expect(smallTextModel('размышление').vector).toStrictEqual(new Int8Array([1, 1, 1, 1, 1, 1, 1, 1, 1]));
+  expect(standartTextModel('размышление').vector).toStrictEqual(new Int8Array([1, 1, 1, 1, 1, 1, 1, 1, 1]));
 });
 
 test('check grams vector 2', () => { 
-  expect(smallTextModel('парампампампам').vector).toStrictEqual(new Int8Array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]));
+  expect(standartTextModel('парампампампам').vector).toStrictEqual(new Int8Array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]));
 });
 
 test('check match vector 1', () => {
   const checkMatchVector = () => {
-    const templateModel = smallTextModel('размышление');
-    const searchModel = smallTextModel('размышляющий');
+    const templateModel = standartTextModel('размышление');
+    const searchModel = standartTextModel('размышляющий');
 
     return getMatchVector(templateModel, searchModel);
   }
@@ -119,8 +119,8 @@ test('check match vector 1', () => {
 
 test('check match vector 2', () => {
   const checkMatchVector = () => {
-    const templateModel = smallTextModel('размышление');
-    const searchModel = smallTextModel('размышления');
+    const templateModel = standartTextModel('размышление');
+    const searchModel = standartTextModel('размышления');
 
     return getMatchVector(templateModel, searchModel);
   }
@@ -130,8 +130,8 @@ test('check match vector 2', () => {
 
 test('check match vector 3', () => {
   const checkMatchVector = () => {
-    const templateModel = smallTextModel('парампампампам');
-    const searchModel = smallTextModel('парампампампам');
+    const templateModel = standartTextModel('парампампампам');
+    const searchModel = standartTextModel('парампампампам');
 
     return getMatchVector(templateModel, searchModel);
   }
@@ -144,22 +144,22 @@ test('cosine distance 1', () => {
 })
 
 test('cosine distance 2', () => {
-  const templateModel = smallTextModel('парампампамляля');
-  const searchModel = smallTextModel('парампампам');
+  const templateModel = standartTextModel('парампампамляля');
+  const searchModel = standartTextModel('парампампам');
 
   expect(getNGramsSpaceCosineDistance(templateModel, searchModel)).toBe(0.3846153846153847)
 })
 
 test('cosine distance 3', () => {
-  const templateModel = smallTextModel('парампампампам');
-  const searchModel = smallTextModel('парампампампам');
+  const templateModel = standartTextModel('парампампампам');
+  const searchModel = standartTextModel('парампампампам');
 
   expect(getNGramsSpaceCosineDistance(templateModel, searchModel)).toBe(1.0000000000000002)
 })
 
 test('cosine distance 4', () => {
-  const templateModel = smallTextModel('парампампампам');
-  const searchModel = smallTextModel('слово');
+  const templateModel = standartTextModel('парампампампам');
+  const searchModel = standartTextModel('слово');
 
   expect(getNGramsSpaceCosineDistance(templateModel, searchModel)).toBe(-1.0000000000000002)
 })
@@ -169,7 +169,7 @@ test('classificator test 1', () => {
     {text: 'покажи мне', descriptor: {}}, 
     {text: 'показать', descriptor: {}}, 
     {text: 'выбрать', descriptor: {}}
-  ], smallTextModel);
+  ], standartTextModel);
 
   expect(classificator.match('покаж мне', MatchFunctionType.space)).toStrictEqual(
     {
@@ -184,18 +184,18 @@ const classificator_test_2 = new SimpleCat([
   {text: 'макаронная каша по итальянски', descriptor: {}}, 
   {text: 'итальянский суп десерт, а потом макароны', descriptor: {}},
   {text: 'макароны в италии', descriptor: {}},
-], smallTextModel);
+], standartTextModel);
 
 test('classificator test 2', () => {
   expect(classificator_test_2.match('макароны по итальянски', MatchFunctionType.space)).toStrictEqual(
     {
       distances: new Float32Array([
-        0.27272728085517883,
-        0.4444444477558136,
-        0.21739129722118378,
-        0.6000000238418579
+        0.3333333432674408,
+        0.4736842215061188,
+        0.1666666716337204,
+        0.4545454680919647
       ]),
-      maxCosIndex: 3
+      maxCosIndex: 1
     }
   )
 })
@@ -204,14 +204,14 @@ const classificator_test_3 = new SimpleCat([
   {text: `Мне очень понравился торт. Очень вкусный, состав хороший. Будем покупать, рекомендую!`, descriptor: {}}, 
   {text: 'Какой-то странный, но вкусный торт с привкусом манго', descriptor: {}}, 
   {text: 'Ваш магазин выручил меня, это был сногсшибательный торт', descriptor: {}},
-], smallTextModel);
+], standartTextModel);
 
-test('classificator test 3', () => {
+test('classificator test 3 1', () => {
   expect(classificator_test_3.match('Нам торт понравился, будем покупать больше', MatchFunctionType.space)).toStrictEqual(
     {
       distances: new Float32Array([
         -0.2083333283662796,
-        -0.8571428656578064,
+        -0.8666666746139526,
         -0.8709677457809448
       ]),
       maxCosIndex: 0
@@ -259,7 +259,7 @@ const chehov = [
   {text: `Нельзя требовать от грязи, чтобы она не была грязью. «Драма на охоте»`, descriptor: {}},
 ];
 
-const classificator_test_4 = new SimpleCat(chehov, smallTextModel)
+const classificator_test_4 = new SimpleCat(chehov, standartTextModel)
 
 test('classificator test 4 1', () => {
   expect(classificator_test_4.match('Душа человека - прекрасна', MatchFunctionType.space).maxCosIndex).toStrictEqual(0)
@@ -273,15 +273,15 @@ const classificator_test_5 = new SimpleCat([
   {text: `Мы ехали на белом велосипеде`, descriptor: {}}, 
   {text: 'Мы ехали на зеленом велосипеде', descriptor: {}}, 
   {text: 'Мы ехали на синем велосипеде', descriptor: {}},
-], smallTextModel);
+], standartTextModel);
 
 test('classificator test 5 1', () => {
   expect(classificator_test_5.match('Мы ехали на велосипеде', MatchFunctionType.space)).toStrictEqual(
     {
       distances: new Float32Array([
-        0.6172134280204773,
-        0.375,
-        0.5714285969734192
+        0.6681531071662903,
+        0.4444444477558136,
+        0.625
       ]),
       maxCosIndex: 0
     }
@@ -292,9 +292,9 @@ test('classificator test 5 2', () => {
   expect(classificator_test_5.match('Мы ехали на велосипеде', MatchFunctionType.position)).toStrictEqual(
     {
       distances: new Float32Array([
-        0.6692464351654053,
-        0.5572108030319214,
-        0.685627818107605
+        0.6848225593566895,
+        0.6034448146820068,
+        0.7240121364593506
       ]),
       maxCosIndex: 2
     }
@@ -303,7 +303,7 @@ test('classificator test 5 2', () => {
 
 const classificator_test_6 = new SimpleCat([
   {text: `Мы ехали на велосипеде`, descriptor: {}}, 
-], smallTextModel);
+], standartTextModel);
 
 test('classificator test 6', () => {
   const multiInput = () => {
@@ -326,7 +326,7 @@ test('classificator test 6', () => {
         maxCosIndex: 0
       },
       {
-        distances: new Float32Array([0.9937711954116821]),
+        distances: new Float32Array([0.9954850077629089]),
         maxCosIndex: 0
       },
       {
@@ -334,7 +334,7 @@ test('classificator test 6', () => {
         maxCosIndex: 0
       },
       {
-        distances: new Float32Array([0.988890528678894]),
+        distances: new Float32Array([0.9927337765693665]),
         maxCosIndex: 0
       },
       {
@@ -342,7 +342,7 @@ test('classificator test 6', () => {
         maxCosIndex: 0
       },
       {
-        distances: new Float32Array([0.9942685961723328]),
+        distances: new Float32Array([0.9964648485183716]),
         maxCosIndex: 0
       },
     ]
@@ -351,7 +351,7 @@ test('classificator test 6', () => {
 
 const classificator_test_7 = new SimpleCat([
   {text: `белка на едет белом велосипеде`, descriptor: {}}, 
-], smallTextModel);
+], standartTextModel);
 
 test('classificator test 7 1', () => {
   expect(classificator_test_7.match('на белом-белом велосипеде едет белка', MatchFunctionType.space)).toStrictEqual(
@@ -368,7 +368,33 @@ test('classificator test 7 2', () => {
   expect(classificator_test_7.match('на белом-белом велосипеде едет белка', MatchFunctionType.position)).toStrictEqual(
     {
       distances: new Float32Array([
-        0.7549434900283813,
+        0.7704740166664124,
+      ]),
+      maxCosIndex: 0
+    }
+  )
+})
+
+const classificator_test_8 = new SimpleCat([
+  {text: `Нам торт не понравился, не будем покупать больше`, descriptor: {}}, 
+], standartTextModel, {не: 1});
+
+test('classificator test 8 1', () => {
+  expect(classificator_test_8.match('Нам торт понравился, будем покупать больше', MatchFunctionType.space)).toStrictEqual(
+    {
+      distances: new Float32Array([
+        0.8461538553237915,
+      ]),
+      maxCosIndex: 0
+    }
+  )
+})
+
+test('classificator test 8 2', () => {
+  expect(classificator_test_8.match('Нам торт не понравился, не будем покупать больше', MatchFunctionType.space)).toStrictEqual(
+    {
+      distances: new Float32Array([
+        1,
       ]),
       maxCosIndex: 0
     }

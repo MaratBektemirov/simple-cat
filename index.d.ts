@@ -14,12 +14,12 @@ interface ITextOption<A> {
     text: string;
     descriptor: A;
 }
-declare function getNGrams(text: string, gramSize: number): {
+declare const standartTextModel: TextToModel;
+declare function getNGrams(words: string[], gramSize: number): {
     grams: {};
     negGrams: {};
     length: number;
 };
-declare function smallTextModel(text: any): ITextModel;
 declare function getMatchVector(templateModel: ITextModel, searchModel: ITextModel): Float32Array;
 type Vector = Float32Array | Int8Array;
 declare function getVectorCosineDistance(aVector: Vector, bVector: Vector): number;
@@ -37,4 +37,4 @@ declare class SimpleCat<D> {
         maxCosIndex: number;
     };
 }
-export { smallTextModel, getNGrams, getMatchVector, getVectorCosineDistance, getNGramsSpaceCosineDistance, SimpleCat, MatchFunctionType, };
+export { standartTextModel, getNGrams, getMatchVector, getVectorCosineDistance, getNGramsSpaceCosineDistance, SimpleCat, MatchFunctionType, };

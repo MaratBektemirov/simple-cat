@@ -1,23 +1,29 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MatchFunctionType = exports.SimpleCat = exports.getNGramsSpaceCosineDistance = exports.getVectorCosineDistance = exports.getMatchVector = exports.getNGrams = exports.smallTextModel = void 0;
-function getNGrams(text, gramSize) {
+exports.MatchFunctionType = exports.SimpleCat = exports.getNGramsSpaceCosineDistance = exports.getVectorCosineDistance = exports.getMatchVector = exports.getNGrams = exports.standartTextModel = void 0;
+var wordRegexp = /[^A-Za-zА-Яа-я ]/g;
+var splitWordRegexp = /\s+/g;
+var standartTextModel = function (text) {
+    var gramSize = 3;
+    var words = text.split(splitWordRegexp);
+    var _a = getNGrams(words, gramSize), grams = _a.grams, negGrams = _a.negGrams, length = _a.length;
+    var negVector = new Int8Array(length);
+    var vector = new Int8Array(length);
+    negVector.fill(-1);
+    vector.fill(1);
+    return { grams: grams, negGrams: negGrams, vector: vector, negVector: negVector, length: length };
+};
+exports.standartTextModel = standartTextModel;
+function getNGrams(words, gramSize) {
     if (typeof gramSize !== 'number') {
         console.error('Please define size of grams');
     }
     var grams = {};
     var negGrams = {};
-    var cursor = 0;
-    var index = 0;
-    while (text[cursor + gramSize - 1]) {
-        var gram = text.slice(cursor, cursor + gramSize);
-        if (gram.indexOf(' ') !== -1) {
-            cursor++;
-            continue;
-        }
+    var addGram = function (gram, index) {
         var newArrayLength = 1;
-        var oldArray = void 0;
-        var oldNegArray = void 0;
+        var oldArray;
+        var oldNegArray;
         if (grams[gram]) {
             newArrayLength += grams[gram].length;
             oldArray = grams[gram];
@@ -33,25 +39,30 @@ function getNGrams(text, gramSize) {
         newNegArr[newArrayLength - 1] = index * -1;
         grams[gram] = newArr;
         negGrams[gram] = newNegArr;
-        cursor++;
-        index++;
+    };
+    var i = 0;
+    var index = 0;
+    while (words[i]) {
+        var word = words[i].toLowerCase().replace(wordRegexp, '');
+        if (word.length < gramSize) {
+            addGram(word, index);
+            index++;
+        }
+        else {
+            var j = 0;
+            while (word[j + gramSize - 1]) {
+                var gram = word.slice(j, j + gramSize);
+                addGram(gram, index);
+                j++;
+                index++;
+            }
+        }
+        i++;
     }
     var length = index;
     return { grams: grams, negGrams: negGrams, length: length };
 }
 exports.getNGrams = getNGrams;
-var stRegexp = /[^A-Za-zА-Яа-я ]/g;
-function smallTextModel(text) {
-    var gramSize = 3;
-    text = text.toLowerCase().replace(stRegexp, '');
-    var _a = getNGrams(text, gramSize), grams = _a.grams, length = _a.length, negGrams = _a.negGrams;
-    var negVector = new Int8Array(length);
-    var vector = new Int8Array(length);
-    negVector.fill(-1);
-    vector.fill(1);
-    return { grams: grams, negGrams: negGrams, vector: vector, negVector: negVector, length: length };
-}
-exports.smallTextModel = smallTextModel;
 function getPositionVector(negTemplateGrams, templateModelLength, model) {
     var vector = new Int8Array(templateModelLength);
     var lastIndex = 0;
