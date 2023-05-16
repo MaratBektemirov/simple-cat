@@ -38,6 +38,33 @@ const standartTextModel: TextToModel = (text: string) => {
     return { grams, negGrams, vector, negVector, length };
 }
 
+const VectorFindVacantIndex = (vector: Vector, candidate: number) => {
+    let i = 0;
+
+    while (i < vector.length) {
+        if (candidate > vector[i]) {
+            return i;
+        }
+
+        i++;
+    }
+
+    return -1;
+}
+
+const VectorShiftRight = (vector: Vector, value: number, index: number) => {
+    let i = vector.length - 1;
+
+    while (i > index) {
+        vector[i] = vector[i - 1];
+        i--;
+    }
+
+    vector[index] = value;
+
+    return vector;
+}
+
 function getNGrams(words: string[], gramSize: number) {
     if (typeof gramSize !== 'number') {
         console.error('Please define size of grams');
@@ -221,7 +248,7 @@ class SimpleCat<D> {
         }
     }
 
-    match(text: string, matchType: MatchFunctionType) {
+    match(text: string, matchType: MatchFunctionType, topSize: number) {
         const searchModel = this.textToModel(text);
         const distances = new Float32Array(this._models.length);
 
@@ -234,17 +261,23 @@ class SimpleCat<D> {
         }
     
         let i = 0;
-        let max = -1;
-        let maxCosIndex: number = null;
+
+        const topDistanceVector = new Float32Array(topSize);
+        topDistanceVector.fill(-1.1);
+
+        const topIndexVector = new Int8Array(topSize);
+        topIndexVector.fill(-1);
 
         while (this._models[i]) {
             const templateModel = this._models[i].model;
             const cosineDistance = matchFunction(templateModel, searchModel);
             distances[i] = cosineDistance;
 
-            if (cosineDistance > max) {
-                max = cosineDistance;
-                maxCosIndex = i;
+            const vacantIndex = VectorFindVacantIndex(topDistanceVector, cosineDistance);
+
+            if (vacantIndex > -1) {
+                VectorShiftRight(topDistanceVector, cosineDistance, vacantIndex);
+                VectorShiftRight(topIndexVector, i, vacantIndex);
             }
 
             i++;
@@ -252,7 +285,10 @@ class SimpleCat<D> {
 
         return {
             distances,
-            maxCosIndex,
+            top: {
+                distances: topDistanceVector,
+                indexes: topIndexVector,
+            }
         };
     }
 }
@@ -265,4 +301,6 @@ export {
     getNGramsSpaceCosineDistance,
     SimpleCat,
     MatchFunctionType,
+    VectorFindVacantIndex,
+    VectorShiftRight,
 }

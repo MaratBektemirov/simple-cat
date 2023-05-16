@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MatchFunctionType = exports.SimpleCat = exports.getNGramsSpaceCosineDistance = exports.getVectorCosineDistance = exports.getMatchVector = exports.getNGrams = exports.standartTextModel = void 0;
+exports.VectorShiftRight = exports.VectorFindVacantIndex = exports.MatchFunctionType = exports.SimpleCat = exports.getNGramsSpaceCosineDistance = exports.getVectorCosineDistance = exports.getMatchVector = exports.getNGrams = exports.standartTextModel = void 0;
 var wordRegexp = /[^A-Za-zА-Яа-я ]/g;
 var splitWordRegexp = /\s+/g;
 var standartTextModel = function (text) {
@@ -14,6 +14,27 @@ var standartTextModel = function (text) {
     return { grams: grams, negGrams: negGrams, vector: vector, negVector: negVector, length: length };
 };
 exports.standartTextModel = standartTextModel;
+var VectorFindVacantIndex = function (vector, candidate) {
+    var i = 0;
+    while (i < vector.length) {
+        if (candidate > vector[i]) {
+            return i;
+        }
+        i++;
+    }
+    return -1;
+};
+exports.VectorFindVacantIndex = VectorFindVacantIndex;
+var VectorShiftRight = function (vector, value, index) {
+    var i = vector.length - 1;
+    while (i > index) {
+        vector[i] = vector[i - 1];
+        i--;
+    }
+    vector[index] = value;
+    return vector;
+};
+exports.VectorShiftRight = VectorShiftRight;
 function getNGrams(words, gramSize) {
     if (typeof gramSize !== 'number') {
         console.error('Please define size of grams');
@@ -162,7 +183,7 @@ var SimpleCat = /** @class */ (function () {
             i++;
         }
     }
-    SimpleCat.prototype.match = function (text, matchType) {
+    SimpleCat.prototype.match = function (text, matchType, topSize) {
         var searchModel = this.textToModel(text);
         var distances = new Float32Array(this._models.length);
         var matchFunction;
@@ -173,21 +194,27 @@ var SimpleCat = /** @class */ (function () {
             matchFunction = getNGramsSpaceCosineDistance;
         }
         var i = 0;
-        var max = -1;
-        var maxCosIndex = null;
+        var topDistanceVector = new Float32Array(topSize);
+        topDistanceVector.fill(-1.1);
+        var topIndexVector = new Int8Array(topSize);
+        topIndexVector.fill(-1);
         while (this._models[i]) {
             var templateModel = this._models[i].model;
             var cosineDistance = matchFunction(templateModel, searchModel);
             distances[i] = cosineDistance;
-            if (cosineDistance > max) {
-                max = cosineDistance;
-                maxCosIndex = i;
+            var vacantIndex = VectorFindVacantIndex(topDistanceVector, cosineDistance);
+            if (vacantIndex > -1) {
+                VectorShiftRight(topDistanceVector, cosineDistance, vacantIndex);
+                VectorShiftRight(topIndexVector, i, vacantIndex);
             }
             i++;
         }
         return {
             distances: distances,
-            maxCosIndex: maxCosIndex,
+            top: {
+                distances: topDistanceVector,
+                indexes: topIndexVector,
+            }
         };
     };
     return SimpleCat;

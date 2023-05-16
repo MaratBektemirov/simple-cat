@@ -15,6 +15,8 @@ interface ITextOption<A> {
     descriptor: A;
 }
 declare const standartTextModel: TextToModel;
+declare const VectorFindVacantIndex: (vector: Vector, candidate: number) => number;
+declare const VectorShiftRight: (vector: Vector, value: number, index: number) => Vector;
 declare function getNGrams(words: string[], gramSize: number): {
     grams: {};
     negGrams: {};
@@ -32,9 +34,12 @@ declare class SimpleCat<D> {
     private textToModel;
     private _models;
     constructor(texts: ITextOption<D>[], textToModel: TextToModel);
-    match(text: string, matchType: MatchFunctionType): {
+    match(text: string, matchType: MatchFunctionType, topSize: number): {
         distances: Float32Array;
-        maxCosIndex: number;
+        top: {
+            distances: Float32Array;
+            indexes: Int8Array;
+        };
     };
 }
-export { standartTextModel, getNGrams, getMatchVector, getVectorCosineDistance, getNGramsSpaceCosineDistance, SimpleCat, MatchFunctionType, };
+export { standartTextModel, getNGrams, getMatchVector, getVectorCosineDistance, getNGramsSpaceCosineDistance, SimpleCat, MatchFunctionType, VectorFindVacantIndex, VectorShiftRight, };
