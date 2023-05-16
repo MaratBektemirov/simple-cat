@@ -1,17 +1,13 @@
-type MatchFunction = (templateModel: ITextModel, searchModel: ITextModel, weightFunction: WeightFunction) => number;
 type TextToModel = (text: string) => ITextModel;
-type WeightFunction = (templatePositions: Vector, searchPositions: Vector) => number;
+type WeightFunction = (templatePositions: Int16Array, searchPositions: Int16Array) => number;
 type NGrams = {
     [key: string]: {
-        positions: Vector[];
+        positions: Int16Array[];
         indexes: number[];
     };
 };
-type Vector = Float32Array | Int8Array | Int16Array | Int32Array;
 interface ITextModel {
     grams: NGrams;
-    vector: Int8Array;
-    negVector: Int8Array;
     length: number;
 }
 interface ITextOption<A> {
@@ -20,23 +16,21 @@ interface ITextOption<A> {
 }
 declare const standartWeightFunction: WeightFunction;
 declare const standartTextModel: TextToModel;
-declare const VectorFindVacantIndex: (vector: Vector, candidate: number) => number;
-declare const VectorShiftRight: (vector: Vector, value: number, index: number) => Vector;
+declare const VectorFindVacantIndex: (vector: Int16Array, candidate: number) => number;
+declare const VectorShiftRight: (vector: Int16Array, value: number, index: number) => Int16Array;
 declare function getNGrams(words: string[], gramSize: number): {
     grams: NGrams;
     length: number;
 };
-declare function getMatchVector(templateModel: ITextModel, searchModel: ITextModel, weightFunction: WeightFunction): Float32Array;
-declare function getVectorCosineDistance(aVector: Vector, bVector: Vector): number;
-declare const getNGramsCosineDistance: MatchFunction;
+declare function getMatchScore(templateModel: ITextModel, searchModel: ITextModel, weightFunction: WeightFunction): number;
 declare class SimpleCat<D> {
     private textToModel;
     private weightFunction;
     private _models;
     constructor(texts: ITextOption<D>[], textToModel: TextToModel, weightFunction: WeightFunction);
-    match(text: string, topSize: number): {
-        distances: Float32Array;
-        indexes: Int8Array;
+    match(text: string, top: number): {
+        scores: Int16Array;
+        indexes: Int16Array;
     };
 }
-export { SimpleCat, standartTextModel, standartWeightFunction, getNGrams, getMatchVector, getVectorCosineDistance, getNGramsCosineDistance, VectorFindVacantIndex, VectorShiftRight, };
+export { SimpleCat, standartTextModel, standartWeightFunction, getNGrams, getMatchScore, VectorFindVacantIndex, VectorShiftRight, };

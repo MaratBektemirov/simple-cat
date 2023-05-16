@@ -90,12 +90,12 @@ const classificator_test_5 = new SimpleCat([
 test('classificator test 5 1', () => {
   expect(classificator_test_5.match('Мы ехали на велосипеде', 3)).toStrictEqual(
     {
-      distances: new Float32Array([
-        -0.016413073986768723,
-        -0.01880129612982273,
-        -0.09008202701807022,
+      scores: new Int16Array([
+        174,
+        171,
+        171,
       ]),
-      indexes: new Int8Array([0,2,1])
+      indexes: new Int16Array([0,1,2])
     }
   )
 })
@@ -103,12 +103,42 @@ test('classificator test 5 1', () => {
 test('classificator test 5 2', () => {
   expect(classificator_test_5.match('Мы ехали на мотоциклете', 3)).toStrictEqual(
     {
-      distances: new Float32Array([
-        0.07048476487398148,
-        0.07048476487398148,
-        -0.006469873245805502,
+      scores: new Int16Array([
+        201,
+        201,
+        201,
       ]),
-      indexes: new Int8Array([0,2,1])
+      indexes: new Int16Array([0,1,2])
     }
   )
+})
+
+test('classificator test 5 3', () => {
+  expect(classificator_test_5.match('Мы ехали на фиолетовом мотоциклете', 3)).toStrictEqual(
+    {
+      scores: new Int16Array([
+        205,
+        205,
+        205,
+      ]),
+      indexes: new Int16Array([0,1,2])
+    }
+  )
+})
+
+const classificator_test_6 = new SimpleCat([
+  {text: 'покажи мне что там творится', descriptor: {}}, 
+  {text: 'давай же наконец покажи мне что там творится', descriptor: {}}, 
+  {text: 'выбрать', descriptor: {}}
+], standartTextModel, standartWeightFunction);
+
+test('classificator test 6 1', () => {
+  expect(classificator_test_6.match('покажи мне', 3)).toStrictEqual({
+    scores: new Int16Array([
+      75,
+      60,
+      0,
+    ]),
+    indexes: new Int16Array([0,1,-1])
+  })
 })

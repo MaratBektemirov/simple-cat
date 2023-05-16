@@ -1,13 +1,9 @@
-type MatchFunction = (templateModel: ITextModel, searchModel: ITextModel, weightFunction: WeightFunction) => number;
 type TextToModel = (text: string) => ITextModel;
-type WeightFunction = (templatePositions: Vector, searchPositions: Vector) => number;
-type NGrams = {[key: string]: {positions: Vector[], indexes: number[]}};
-type Vector = Float32Array | Int8Array | Int16Array | Int32Array;
+type WeightFunction = (templatePositions: Int16Array, searchPositions: Int16Array) => number;
+type NGrams = {[key: string]: {positions: Int16Array[], indexes: number[]}};
 
 interface ITextModel {
     grams: NGrams;
-    vector: Int8Array;
-    negVector: Int8Array;
     length: number;
 }
 
@@ -25,29 +21,21 @@ const wordRegexp = /[^A-Za-zА-Яа-я ]/g;
 const splitWordRegexp = /\s+/g;
 
 const standartWeightFunction: WeightFunction = (templatePositions, searchPositions) => {
-    const positionWeight = 0.5 
-        - (Math.abs(templatePositions[0] - searchPositions[0]) * 0.02) 
-        - (Math.abs(templatePositions[1] - searchPositions[1]) * 0.1);
+    const wordIndexDiff = Math.abs(templatePositions[0] - searchPositions[0]) * 1;
+    const gramIndexInWordDiff = Math.abs(templatePositions[1] - searchPositions[1]) * 4
+    const positionWeight = 5 - wordIndexDiff - gramIndexInWordDiff;
 
-    return (1.5 + Math.max(0, positionWeight));    
+    return 10 + Math.max(0, positionWeight);    
 }
 
 const standartTextModel: TextToModel = (text: string) => {
     const gramSize = 3;
     const words = text.split(splitWordRegexp);
 
-    const { grams, length } = getNGrams(words, gramSize);
-
-    const negVector = new Int8Array(length);
-    const vector = new Int8Array(length);
-
-    negVector.fill(-1);
-    vector.fill(1);
-
-    return { grams, vector, negVector, length };
+    return getNGrams(words, gramSize);
 }
 
-const VectorFindVacantIndex = (vector: Vector, candidate: number) => {
+const VectorFindVacantIndex = (vector: Int16Array, candidate: number) => {
     let i = 0;
 
     while (i < vector.length) {
@@ -61,7 +49,7 @@ const VectorFindVacantIndex = (vector: Vector, candidate: number) => {
     return -1;
 }
 
-const VectorShiftRight = (vector: Vector, value: number, index: number) => {
+const VectorShiftRight = (vector: Int16Array, value: number, index: number) => {
     let i = vector.length - 1;
 
     while (i > index) {
@@ -114,8 +102,8 @@ function getNGrams(words: string[], gramSize: number) {
     return { grams, length };
 }
 
-function getMatchVector(templateModel: ITextModel, searchModel: ITextModel, weightFunction: WeightFunction) {
-    const vector = new Float32Array(templateModel.negVector);
+function getMatchScore(templateModel: ITextModel, searchModel: ITextModel, weightFunction: WeightFunction) {
+    let score = 0
 
     for (const searchGram of Object.keys(searchModel.grams)) {
         const templateGramPositions = templateModel.grams[searchGram];
@@ -134,40 +122,12 @@ function getMatchVector(templateModel: ITextModel, searchModel: ITextModel, weig
                 break;
             }
 
-            const index = templateGramPositions.indexes[i];
-            vector[index] += weightFunction(templatePositions, searchPositions);
+            score += weightFunction(templatePositions, searchPositions);
             i++;
         }
     }
 
-    return vector;
-}
-
-function getVectorCosineDistance(aVector: Vector, bVector: Vector) {    
-    let scalarProduct = 0;
-    let aSumOfSquaresOfCoordinates = 0;
-    let bSumOfSquaresOfCoordinates = 0;
-
-    let cursor = 0;
-
-    while (cursor < aVector.length) {
-        scalarProduct += (aVector[cursor] * bVector[cursor]);
-        aSumOfSquaresOfCoordinates += (aVector[cursor] * aVector[cursor]);
-        bSumOfSquaresOfCoordinates += (bVector[cursor] * bVector[cursor]);
-        cursor++;
-    }
-
-    const aL2Norm = Math.sqrt(aSumOfSquaresOfCoordinates);
-    const bL2Norm = Math.sqrt(bSumOfSquaresOfCoordinates);
-
-    return scalarProduct/aL2Norm/bL2Norm;
-}
-
-const getNGramsCosineDistance: MatchFunction = (templateModel, searchModel, weightFunction) => {
-    const matchVector = getMatchVector(templateModel, searchModel, weightFunction);
-    const templateVector = new Float32Array(templateModel.vector);
-    
-    return getVectorCosineDistance(templateVector, matchVector);
+    return score;
 }
 
 class SimpleCat<D> {
@@ -198,25 +158,22 @@ class SimpleCat<D> {
         }
     }
 
-    match(text: string, topSize: number) {
+    match(text: string, top: number) {
         const searchModel = this.textToModel(text);
 
-        let i = 0;
-
-        const topDistanceVector = new Float32Array(topSize);
-        topDistanceVector.fill(-1.1);
-
-        const topIndexVector = new Int8Array(topSize);
+        const topScoresVector = new Int16Array(top);
+        const topIndexVector = new Int16Array(top);
         topIndexVector.fill(-1);
 
+        let i = 0;
         while (this._models[i]) {
             const templateModel = this._models[i].model;
-            const cosineDistance = getNGramsCosineDistance(templateModel, searchModel, this.weightFunction);
+            const score = getMatchScore(templateModel, searchModel, this.weightFunction);
 
-            const vacantIndex = VectorFindVacantIndex(topDistanceVector, cosineDistance);
+            const vacantIndex = VectorFindVacantIndex(topScoresVector, score);
 
             if (vacantIndex > -1) {
-                VectorShiftRight(topDistanceVector, cosineDistance, vacantIndex);
+                VectorShiftRight(topScoresVector, score, vacantIndex);
                 VectorShiftRight(topIndexVector, i, vacantIndex);
             }
 
@@ -224,7 +181,7 @@ class SimpleCat<D> {
         }
 
         return {
-            distances: topDistanceVector,
+            scores: topScoresVector,
             indexes: topIndexVector,
         };
     }
@@ -235,9 +192,7 @@ export {
     standartTextModel,
     standartWeightFunction,
     getNGrams,
-    getMatchVector,
-    getVectorCosineDistance,
-    getNGramsCosineDistance,
+    getMatchScore,
     VectorFindVacantIndex,
     VectorShiftRight,
 }
