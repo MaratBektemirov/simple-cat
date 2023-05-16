@@ -4,10 +4,10 @@ exports.VectorShiftRight = exports.VectorFindVacantIndex = exports.getNGramsCosi
 var wordRegexp = /[^A-Za-zА-Яа-я ]/g;
 var splitWordRegexp = /\s+/g;
 var standartWeightFunction = function (templatePositions, searchPositions) {
-    var positionWeight = 0.4
+    var positionWeight = 0.5
         - (Math.abs(templatePositions[0] - searchPositions[0]) * 0.02)
-        + (Math.abs(templatePositions[1] - searchPositions[1]) * 0.08);
-    return (1.6 + Math.max(0, positionWeight));
+        - (Math.abs(templatePositions[1] - searchPositions[1]) * 0.1);
+    return (1.5 + Math.max(0, positionWeight));
 };
 exports.standartWeightFunction = standartWeightFunction;
 var standartTextModel = function (text) {
