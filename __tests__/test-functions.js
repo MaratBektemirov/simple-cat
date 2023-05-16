@@ -2,99 +2,63 @@ const {
   getNGrams, 
   getMatchVector, 
   getVectorCosineDistance, 
-  getNGramsSpaceCosineDistance, 
-  standartTextModel,
+  getNGramsCosineDistance, 
   VectorFindVacantIndex,
   VectorShiftRight,
+  standartTextModel,
+  standartWeightFunction,
 } = require('../index.js');
 
 test('check grams 1', () => {
-  const { grams, negGrams } = getNGrams(['проверка'], 3);
+  const { grams } = getNGrams(['проверка'], 3);
 
   expect(grams).toStrictEqual({
-    'про': new Int8Array([0]),
-    'ров': new Int8Array([1]),
-    'ове': new Int8Array([2]),
-    'вер': new Int8Array([3]),
-    'ерк': new Int8Array([4]),
-    'рка': new Int8Array([5]),
-  });
-
-  expect(negGrams).toStrictEqual({
-    'про': new Int8Array([-0]),
-    'ров': new Int8Array([-1]),
-    'ове': new Int8Array([-2]),
-    'вер': new Int8Array([-3]),
-    'ерк': new Int8Array([-4]),
-    'рка': new Int8Array([-5]),
+    'про': {positions: [new Int16Array([0,0])], indexes: [0]},
+    'ров': {positions: [new Int16Array([0,1])], indexes: [1]},
+    'ове': {positions: [new Int16Array([0,2])], indexes: [2]},
+    'вер': {positions: [new Int16Array([0,3])], indexes: [3]},
+    'ерк': {positions: [new Int16Array([0,4])], indexes: [4]},
+    'рка': {positions: [new Int16Array([0,5])], indexes: [5]},
   });
 });
 
 test('check grams 2', () => {
-  const { grams, negGrams } = getNGrams(['парампампам'], 3);
+  const { grams } = getNGrams(['парампампам'], 3);
 
   expect(grams).toStrictEqual({
-    'пар': new Int8Array([0]),
-    'ара': new Int8Array([1]),
-    'рам': new Int8Array([2]),
-    'амп': new Int8Array([3,6]),
-    'мпа': new Int8Array([4,7]),
-    'пам': new Int8Array([5,8]),
-  });
-
-  expect(negGrams).toStrictEqual({
-    'пар': new Int8Array([-0]),
-    'ара': new Int8Array([-1]),
-    'рам': new Int8Array([-2]),
-    'амп': new Int8Array([-3,-6]),
-    'мпа': new Int8Array([-4,-7]),
-    'пам': new Int8Array([-5,-8]),
+    'пар': {positions: [new Int16Array([0,0])], indexes: [0]},
+    'ара': {positions: [new Int16Array([0,1])], indexes: [1]},
+    'рам': {positions: [new Int16Array([0,2])], indexes: [2]},
+    'амп': {positions: [new Int16Array([0,3]), new Int16Array([0,6])], indexes: [3,6]},
+    'мпа': {positions: [new Int16Array([0,4]),new Int16Array([0,7])], indexes: [4,7]},
+    'пам': {positions: [new Int16Array([0,5]), new Int16Array([0,8])], indexes: [5,8]},
   });
 });
 
 test('check grams 3', () => {
-  const { grams, negGrams } = getNGrams(['проверка'], 2);
+  const { grams } = getNGrams(['проверка'], 2);
 
   expect(grams).toStrictEqual({
-    'пр': new Int8Array([0]),
-    'ро': new Int8Array([1]),
-    'ов': new Int8Array([2]),
-    'ве': new Int8Array([3]),
-    'ер': new Int8Array([4]),
-    'рк': new Int8Array([5]),
-    'ка': new Int8Array([6])
-  });
-
-  expect(negGrams).toStrictEqual({
-    'пр': new Int8Array([-0]),
-    'ро': new Int8Array([-1]),
-    'ов': new Int8Array([-2]),
-    'ве': new Int8Array([-3]),
-    'ер': new Int8Array([-4]),
-    'рк': new Int8Array([-5]),
-    'ка': new Int8Array([-6])
+    'пр': {positions: [new Int16Array([0,0])], indexes: [0]},
+    'ро': {positions: [new Int16Array([0,1])], indexes: [1]},
+    'ов': {positions: [new Int16Array([0,2])], indexes: [2]},
+    'ве': {positions: [new Int16Array([0,3])], indexes: [3]},
+    'ер': {positions: [new Int16Array([0,4])], indexes: [4]},
+    'рк': {positions: [new Int16Array([0,5])], indexes: [5]},
+    'ка': {positions: [new Int16Array([0,6])], indexes: [6]},
   });
 });
 
 test('check grams 4', () => {
-  const { grams, negGrams } = getNGrams(['парампампампам'], 3);
+  const { grams } = getNGrams(['парампампампам'], 3);
 
   expect(grams).toStrictEqual({
-    'амп': new Int8Array([3,6,9]),
-    'ара': new Int8Array([1]),
-    'мпа': new Int8Array([4,7,10]),
-    'пам': new Int8Array([5,8,11]),
-    'пар': new Int8Array([0]),
-    'рам': new Int8Array([2]),
-  });
-
-  expect(negGrams).toStrictEqual({
-    'амп': new Int8Array([-3,-6,-9]),
-    'ара': new Int8Array([-1]),
-    'мпа': new Int8Array([-4,-7,-10]),
-    'пам': new Int8Array([-5,-8,-11]),
-    'пар': new Int8Array([0]),
-    'рам': new Int8Array([-2]),
+    'амп': {positions: [new Int16Array([0,3]), new Int16Array([0,6]), new Int16Array([0,9])], indexes: [3,6,9]},
+    'ара': {positions: [new Int16Array([0,1])], indexes: [1]},
+    'мпа': {positions: [new Int16Array([0,4]), new Int16Array([0,7]), new Int16Array([0,10])], indexes: [4,7,10]},
+    'пам': {positions: [new Int16Array([0,5]), new Int16Array([0,8]), new Int16Array([0,11])], indexes: [5,8,11]},
+    'пар': {positions: [new Int16Array([0,0])], indexes: [0]},
+    'рам': {positions: [new Int16Array([0,2])], indexes: [2]},
   });
 })
 
@@ -111,7 +75,7 @@ test('check match vector 1', () => {
     const templateModel = standartTextModel('размышление');
     const searchModel = standartTextModel('размышляющий');
 
-    return getMatchVector(templateModel, searchModel);
+    return getMatchVector(templateModel, searchModel, standartWeightFunction);
   }
  
   expect(checkMatchVector()).toStrictEqual(new Float32Array([1, 1, 1, 1, 1, -1, -1, -1, -1]));
@@ -122,7 +86,7 @@ test('check match vector 2', () => {
     const templateModel = standartTextModel('размышление');
     const searchModel = standartTextModel('размышления');
 
-    return getMatchVector(templateModel, searchModel);
+    return getMatchVector(templateModel, searchModel, standartWeightFunction);
   }
  
   expect(checkMatchVector()).toStrictEqual(new Float32Array([1, 1, 1, 1, 1, 1, 1, 1, -1]));
@@ -133,7 +97,7 @@ test('check match vector 3', () => {
     const templateModel = standartTextModel('парампампампам');
     const searchModel = standartTextModel('парампампампам');
 
-    return getMatchVector(templateModel, searchModel);
+    return getMatchVector(templateModel, searchModel, standartWeightFunction);
   }
  
   expect(checkMatchVector()).toStrictEqual(new Float32Array([1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]));
@@ -147,21 +111,25 @@ test('cosine distance 2', () => {
   const templateModel = standartTextModel('парампампамляля');
   const searchModel = standartTextModel('парампампам');
 
-  expect(getNGramsSpaceCosineDistance(templateModel, searchModel)).toBe(0.3846153846153847)
+  expect(getNGramsCosineDistance(templateModel, searchModel, standartWeightFunction)).toBe(0.3846153846153847)
 })
 
 test('cosine distance 3', () => {
   const templateModel = standartTextModel('парампампампам');
   const searchModel = standartTextModel('парампампампам');
 
-  expect(getNGramsSpaceCosineDistance(templateModel, searchModel)).toBe(1.0000000000000002)
+  expect(getNGramsCosineDistance(templateModel, searchModel, standartWeightFunction)).toBe(1.0000000000000002)
 })
 
 test('cosine distance 4', () => {
   const templateModel = standartTextModel('парампампампам');
   const searchModel = standartTextModel('слово');
 
-  expect(getNGramsSpaceCosineDistance(templateModel, searchModel)).toBe(-1.0000000000000002)
+  expect(getNGramsCosineDistance(templateModel, searchModel, standartWeightFunction)).toBe(-1.0000000000000002)
+})
+
+test('cosine distance 5', () => {
+  expect(getVectorCosineDistance([0,0],[0,1])).toBe(NaN)
 })
 
 test('vector find vacant index 1', () => {

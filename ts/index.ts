@@ -1,10 +1,11 @@
-type MatchFunction = (templateModel: ITextModel, searchModel: ITextModel) => number;
+type MatchFunction = (templateModel: ITextModel, searchModel: ITextModel, weightFunction: WeightFunction) => number;
 type TextToModel = (text: string) => ITextModel;
-type NGrams = {[key: string]: Int8Array};
+type WeightFunction = (templatePositions: Vector, searchPositions: Vector) => number;
+type NGrams = {[key: string]: {positions: Vector[], indexes: number[]}};
+type Vector = Float32Array | Int8Array | Int16Array | Int32Array;
 
 interface ITextModel {
     grams: NGrams;
-    negGrams: NGrams;
     vector: Int8Array;
     negVector: Int8Array;
     length: number;
@@ -23,11 +24,19 @@ interface ITextOption<A> {
 const wordRegexp = /[^A-Za-zА-Яа-я ]/g;
 const splitWordRegexp = /\s+/g;
 
+const standartWeightFunction: WeightFunction = (templatePositions, searchPositions) => {
+    const positionWeight = 0.4 
+        - (Math.abs(templatePositions[0] - searchPositions[0]) * 0.02) 
+        + (Math.abs(templatePositions[1] - searchPositions[1]) * 0.08);
+
+    return (1.6 + Math.max(0, positionWeight));    
+}
+
 const standartTextModel: TextToModel = (text: string) => {
     const gramSize = 3;
     const words = text.split(splitWordRegexp);
 
-    const { grams, negGrams, length } = getNGrams(words, gramSize);
+    const { grams, length } = getNGrams(words, gramSize);
 
     const negVector = new Int8Array(length);
     const vector = new Int8Array(length);
@@ -35,7 +44,7 @@ const standartTextModel: TextToModel = (text: string) => {
     negVector.fill(-1);
     vector.fill(1);
 
-    return { grams, negGrams, vector, negVector, length };
+    return { grams, vector, negVector, length };
 }
 
 const VectorFindVacantIndex = (vector: Vector, candidate: number) => {
@@ -70,88 +79,42 @@ function getNGrams(words: string[], gramSize: number) {
         console.error('Please define size of grams');
     }
 
-    const grams = {};
-    const negGrams = {};
-    const addGram = (gram: string, index: number) => {
-        let newArrayLength = 1;
-        let oldArray;
-        let oldNegArray;
-
-        if (grams[gram]) {
-            newArrayLength += grams[gram].length;
-            oldArray = grams[gram];
-            oldNegArray = negGrams[gram];
-        }
-
-        let newArr = new Int8Array(newArrayLength);
-        let newNegArr = new Int8Array(newArrayLength);
-
-        if (oldArray) {
-            newArr.set(oldArray);
-            newNegArr.set(oldNegArray);
-        }
-
-        newArr[newArrayLength - 1] = index;
-        newNegArr[newArrayLength - 1] = index * -1;
-
-        grams[gram] = newArr;
-        negGrams[gram] = newNegArr;
+    const grams: NGrams = {};
+    const addGram = (gram: string, absoluteGramIndex: number, wordIndex: number, gramInWordIndex: number) => {
+        grams[gram] = grams[gram] || {positions: [], indexes: []};
+        grams[gram].positions.push(new Int16Array([wordIndex, gramInWordIndex]));
+        grams[gram].indexes.push(absoluteGramIndex);
     };
 
     let i = 0;
-    let index = 0;
+    let absoluteGramIndex = 0;
 
     while (words[i]) {
         const word = words[i].toLowerCase().replace(wordRegexp, '');
 
         if (word.length < gramSize) {
-            addGram(word, index);
-            index++;
+            addGram(word, absoluteGramIndex, i, 0);
+            absoluteGramIndex++;
         } else {
             let j = 0;
             while (word[j + gramSize - 1]) {
                 let gram = word.slice(j, j + gramSize);
-    
-                addGram(gram, index);
+                addGram(gram, absoluteGramIndex, i, j);
     
                 j++;
-                index++;
+                absoluteGramIndex++;
             }
         }
 
         i++;
     }
 
-    const length = index;
+    const length = absoluteGramIndex;
 
-    return { grams, negGrams, length };
+    return { grams, length };
 }
 
-function getPositionVector(negTemplateGrams: NGrams, templateModelLength: number, model: ITextModel) {
-    const vector = new Int8Array(templateModelLength);
-    let lastIndex = 0;
-
-    for (const gram of Object.keys(negTemplateGrams)) {
-        const tmplCoords = negTemplateGrams[gram];
-        const insertCoords = model.grams[gram];
-
-        if (!tmplCoords || !insertCoords) continue;
-
-        let i = 0;
-        while (tmplCoords[i]) {
-            vector[lastIndex] = typeof insertCoords[i] === 'number'
-                ? insertCoords[i] 
-                : tmplCoords[i];
-
-            i++;
-            lastIndex++;
-        }
-    }
-
-    return vector;
-}
-
-function getMatchVector(templateModel: ITextModel, searchModel: ITextModel) {
+function getMatchVector(templateModel: ITextModel, searchModel: ITextModel, weightFunction: WeightFunction) {
     const vector = new Float32Array(templateModel.negVector);
 
     for (const searchGram of Object.keys(searchModel.grams)) {
@@ -159,23 +122,20 @@ function getMatchVector(templateModel: ITextModel, searchModel: ITextModel) {
 
         if (!templateGramPositions) continue;
 
-        let stepRatio = 1/templateGramPositions.length;
+        const searchGramPositions = searchModel.grams[searchGram];
+
         let i = 0;
 
-        const searchGramPositions = searchModel.grams[searchGram];
-        const overflowCheck = () => i < templateGramPositions.length;
+        while (i < templateGramPositions.indexes.length) {
+            const templatePositions = templateGramPositions.positions[i];
+            const searchPositions = searchGramPositions.positions[i];
 
-        while (typeof searchGramPositions[i] === 'number' && overflowCheck()) {
-            let j = 0;
-
-            while (typeof templateGramPositions[j] === 'number') {
-                const position = templateGramPositions[j];
-                const distance = templateModel.vector[position] - templateModel.negVector[position];
-                let step = stepRatio * distance;
-                vector[position] = vector[position] + step;
-                j++;
+            if (!searchPositions) {
+                break;
             }
 
+            const index = templateGramPositions.indexes[i];
+            vector[index] += weightFunction(templatePositions, searchPositions);
             i++;
         }
     }
@@ -183,16 +143,14 @@ function getMatchVector(templateModel: ITextModel, searchModel: ITextModel) {
     return vector;
 }
 
-type Vector = Float32Array | Int8Array;
-
-function getVectorCosineDistance(aVector: Vector, bVector: Vector) {
+function getVectorCosineDistance(aVector: Vector, bVector: Vector) {    
     let scalarProduct = 0;
     let aSumOfSquaresOfCoordinates = 0;
     let bSumOfSquaresOfCoordinates = 0;
 
     let cursor = 0;
 
-    while (aVector[cursor]) {
+    while (cursor < aVector.length) {
         scalarProduct += (aVector[cursor] * bVector[cursor]);
         aSumOfSquaresOfCoordinates += (aVector[cursor] * aVector[cursor]);
         bSumOfSquaresOfCoordinates += (bVector[cursor] * bVector[cursor]);
@@ -205,29 +163,21 @@ function getVectorCosineDistance(aVector: Vector, bVector: Vector) {
     return scalarProduct/aL2Norm/bL2Norm;
 }
 
-const getNGramsSpaceCosineDistance: MatchFunction = (templateModel: ITextModel, searchModel: ITextModel) => {
-    const matchVector = getMatchVector(templateModel, searchModel);
+const getNGramsCosineDistance: MatchFunction = (templateModel, searchModel, weightFunction) => {
+    const matchVector = getMatchVector(templateModel, searchModel, weightFunction);
     const templateVector = new Float32Array(templateModel.vector);
     
     return getVectorCosineDistance(templateVector, matchVector);
 }
 
-const getNGramsPositionCosineDistance: MatchFunction = (templateModel: ITextModel, searchModel: ITextModel) => {
-    const templatePositionVector = getPositionVector(templateModel.negGrams, templateModel.length, templateModel);
-    const searchPositionVector = getPositionVector(templateModel.negGrams, templateModel.length, searchModel);
-    
-    return getVectorCosineDistance(templatePositionVector, searchPositionVector);
-}
-
-enum MatchFunctionType {
-    space = 'space',
-    position = 'position',
-}
-
 class SimpleCat<D> {
     private _models: ITextModelWithDescriptor<D>[] = [];
 
-    constructor(texts: ITextOption<D>[], private textToModel: TextToModel) {
+    constructor(
+        texts: ITextOption<D>[],
+        private textToModel: TextToModel,
+        private weightFunction: WeightFunction,
+    ) {
         let i = 0;
 
         if (typeof textToModel !== 'function') {
@@ -248,18 +198,9 @@ class SimpleCat<D> {
         }
     }
 
-    match(text: string, matchType: MatchFunctionType, topSize: number) {
+    match(text: string, topSize: number) {
         const searchModel = this.textToModel(text);
-        const distances = new Float32Array(this._models.length);
 
-        let matchFunction: MatchFunction;
-
-        if (matchType === MatchFunctionType.position) {
-            matchFunction = getNGramsPositionCosineDistance;
-        } else if (matchType === MatchFunctionType.space) {
-            matchFunction = getNGramsSpaceCosineDistance;
-        }
-    
         let i = 0;
 
         const topDistanceVector = new Float32Array(topSize);
@@ -270,8 +211,7 @@ class SimpleCat<D> {
 
         while (this._models[i]) {
             const templateModel = this._models[i].model;
-            const cosineDistance = matchFunction(templateModel, searchModel);
-            distances[i] = cosineDistance;
+            const cosineDistance = getNGramsCosineDistance(templateModel, searchModel, this.weightFunction);
 
             const vacantIndex = VectorFindVacantIndex(topDistanceVector, cosineDistance);
 
@@ -284,23 +224,20 @@ class SimpleCat<D> {
         }
 
         return {
-            distances,
-            top: {
-                distances: topDistanceVector,
-                indexes: topIndexVector,
-            }
+            distances: topDistanceVector,
+            indexes: topIndexVector,
         };
     }
 }
 
-export { 
+export {
+    SimpleCat,
     standartTextModel,
+    standartWeightFunction,
     getNGrams,
     getMatchVector,
     getVectorCosineDistance,
-    getNGramsSpaceCosineDistance,
-    SimpleCat,
-    MatchFunctionType,
+    getNGramsCosineDistance,
     VectorFindVacantIndex,
     VectorShiftRight,
 }

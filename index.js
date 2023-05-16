@@ -1,17 +1,24 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.VectorShiftRight = exports.VectorFindVacantIndex = exports.MatchFunctionType = exports.SimpleCat = exports.getNGramsSpaceCosineDistance = exports.getVectorCosineDistance = exports.getMatchVector = exports.getNGrams = exports.standartTextModel = void 0;
+exports.VectorShiftRight = exports.VectorFindVacantIndex = exports.getNGramsCosineDistance = exports.getVectorCosineDistance = exports.getMatchVector = exports.getNGrams = exports.standartWeightFunction = exports.standartTextModel = exports.SimpleCat = void 0;
 var wordRegexp = /[^A-Za-zА-Яа-я ]/g;
 var splitWordRegexp = /\s+/g;
+var standartWeightFunction = function (templatePositions, searchPositions) {
+    var positionWeight = 0.4
+        - (Math.abs(templatePositions[0] - searchPositions[0]) * 0.02)
+        + (Math.abs(templatePositions[1] - searchPositions[1]) * 0.08);
+    return (1.6 + Math.max(0, positionWeight));
+};
+exports.standartWeightFunction = standartWeightFunction;
 var standartTextModel = function (text) {
     var gramSize = 3;
     var words = text.split(splitWordRegexp);
-    var _a = getNGrams(words, gramSize), grams = _a.grams, negGrams = _a.negGrams, length = _a.length;
+    var _a = getNGrams(words, gramSize), grams = _a.grams, length = _a.length;
     var negVector = new Int8Array(length);
     var vector = new Int8Array(length);
     negVector.fill(-1);
     vector.fill(1);
-    return { grams: grams, negGrams: negGrams, vector: vector, negVector: negVector, length: length };
+    return { grams: grams, vector: vector, negVector: negVector, length: length };
 };
 exports.standartTextModel = standartTextModel;
 var VectorFindVacantIndex = function (vector, candidate) {
@@ -40,95 +47,53 @@ function getNGrams(words, gramSize) {
         console.error('Please define size of grams');
     }
     var grams = {};
-    var negGrams = {};
-    var addGram = function (gram, index) {
-        var newArrayLength = 1;
-        var oldArray;
-        var oldNegArray;
-        if (grams[gram]) {
-            newArrayLength += grams[gram].length;
-            oldArray = grams[gram];
-            oldNegArray = negGrams[gram];
-        }
-        var newArr = new Int8Array(newArrayLength);
-        var newNegArr = new Int8Array(newArrayLength);
-        if (oldArray) {
-            newArr.set(oldArray);
-            newNegArr.set(oldNegArray);
-        }
-        newArr[newArrayLength - 1] = index;
-        newNegArr[newArrayLength - 1] = index * -1;
-        grams[gram] = newArr;
-        negGrams[gram] = newNegArr;
+    var addGram = function (gram, absoluteGramIndex, wordIndex, gramInWordIndex) {
+        grams[gram] = grams[gram] || { positions: [], indexes: [] };
+        grams[gram].positions.push(new Int16Array([wordIndex, gramInWordIndex]));
+        grams[gram].indexes.push(absoluteGramIndex);
     };
     var i = 0;
-    var index = 0;
+    var absoluteGramIndex = 0;
     while (words[i]) {
         var word = words[i].toLowerCase().replace(wordRegexp, '');
         if (word.length < gramSize) {
-            addGram(word, index);
-            index++;
+            addGram(word, absoluteGramIndex, i, 0);
+            absoluteGramIndex++;
         }
         else {
             var j = 0;
             while (word[j + gramSize - 1]) {
                 var gram = word.slice(j, j + gramSize);
-                addGram(gram, index);
+                addGram(gram, absoluteGramIndex, i, j);
                 j++;
-                index++;
+                absoluteGramIndex++;
             }
         }
         i++;
     }
-    var length = index;
-    return { grams: grams, negGrams: negGrams, length: length };
+    var length = absoluteGramIndex;
+    return { grams: grams, length: length };
 }
 exports.getNGrams = getNGrams;
-function getPositionVector(negTemplateGrams, templateModelLength, model) {
-    var vector = new Int8Array(templateModelLength);
-    var lastIndex = 0;
-    for (var _i = 0, _a = Object.keys(negTemplateGrams); _i < _a.length; _i++) {
-        var gram = _a[_i];
-        var tmplCoords = negTemplateGrams[gram];
-        var insertCoords = model.grams[gram];
-        if (!tmplCoords || !insertCoords)
-            continue;
-        var i = 0;
-        while (tmplCoords[i]) {
-            vector[lastIndex] = typeof insertCoords[i] === 'number'
-                ? insertCoords[i]
-                : tmplCoords[i];
-            i++;
-            lastIndex++;
-        }
-    }
-    return vector;
-}
-function getMatchVector(templateModel, searchModel) {
+function getMatchVector(templateModel, searchModel, weightFunction) {
     var vector = new Float32Array(templateModel.negVector);
-    var _loop_1 = function (searchGram) {
-        var templateGramPositions = templateModel.grams[searchGram];
-        if (!templateGramPositions)
-            return "continue";
-        var stepRatio = 1 / templateGramPositions.length;
-        var i = 0;
-        var searchGramPositions = searchModel.grams[searchGram];
-        var overflowCheck = function () { return i < templateGramPositions.length; };
-        while (typeof searchGramPositions[i] === 'number' && overflowCheck()) {
-            var j = 0;
-            while (typeof templateGramPositions[j] === 'number') {
-                var position = templateGramPositions[j];
-                var distance = templateModel.vector[position] - templateModel.negVector[position];
-                var step = stepRatio * distance;
-                vector[position] = vector[position] + step;
-                j++;
-            }
-            i++;
-        }
-    };
     for (var _i = 0, _a = Object.keys(searchModel.grams); _i < _a.length; _i++) {
         var searchGram = _a[_i];
-        _loop_1(searchGram);
+        var templateGramPositions = templateModel.grams[searchGram];
+        if (!templateGramPositions)
+            continue;
+        var searchGramPositions = searchModel.grams[searchGram];
+        var i = 0;
+        while (i < templateGramPositions.indexes.length) {
+            var templatePositions = templateGramPositions.positions[i];
+            var searchPositions = searchGramPositions.positions[i];
+            if (!searchPositions) {
+                break;
+            }
+            var index = templateGramPositions.indexes[i];
+            vector[index] += weightFunction(templatePositions, searchPositions);
+            i++;
+        }
     }
     return vector;
 }
@@ -138,7 +103,7 @@ function getVectorCosineDistance(aVector, bVector) {
     var aSumOfSquaresOfCoordinates = 0;
     var bSumOfSquaresOfCoordinates = 0;
     var cursor = 0;
-    while (aVector[cursor]) {
+    while (cursor < aVector.length) {
         scalarProduct += (aVector[cursor] * bVector[cursor]);
         aSumOfSquaresOfCoordinates += (aVector[cursor] * aVector[cursor]);
         bSumOfSquaresOfCoordinates += (bVector[cursor] * bVector[cursor]);
@@ -149,26 +114,16 @@ function getVectorCosineDistance(aVector, bVector) {
     return scalarProduct / aL2Norm / bL2Norm;
 }
 exports.getVectorCosineDistance = getVectorCosineDistance;
-var getNGramsSpaceCosineDistance = function (templateModel, searchModel) {
-    var matchVector = getMatchVector(templateModel, searchModel);
+var getNGramsCosineDistance = function (templateModel, searchModel, weightFunction) {
+    var matchVector = getMatchVector(templateModel, searchModel, weightFunction);
     var templateVector = new Float32Array(templateModel.vector);
     return getVectorCosineDistance(templateVector, matchVector);
 };
-exports.getNGramsSpaceCosineDistance = getNGramsSpaceCosineDistance;
-var getNGramsPositionCosineDistance = function (templateModel, searchModel) {
-    var templatePositionVector = getPositionVector(templateModel.negGrams, templateModel.length, templateModel);
-    var searchPositionVector = getPositionVector(templateModel.negGrams, templateModel.length, searchModel);
-    return getVectorCosineDistance(templatePositionVector, searchPositionVector);
-};
-var MatchFunctionType;
-(function (MatchFunctionType) {
-    MatchFunctionType["space"] = "space";
-    MatchFunctionType["position"] = "position";
-})(MatchFunctionType || (MatchFunctionType = {}));
-exports.MatchFunctionType = MatchFunctionType;
+exports.getNGramsCosineDistance = getNGramsCosineDistance;
 var SimpleCat = /** @class */ (function () {
-    function SimpleCat(texts, textToModel) {
+    function SimpleCat(texts, textToModel, weightFunction) {
         this.textToModel = textToModel;
+        this.weightFunction = weightFunction;
         this._models = [];
         var i = 0;
         if (typeof textToModel !== 'function') {
@@ -183,16 +138,8 @@ var SimpleCat = /** @class */ (function () {
             i++;
         }
     }
-    SimpleCat.prototype.match = function (text, matchType, topSize) {
+    SimpleCat.prototype.match = function (text, topSize) {
         var searchModel = this.textToModel(text);
-        var distances = new Float32Array(this._models.length);
-        var matchFunction;
-        if (matchType === MatchFunctionType.position) {
-            matchFunction = getNGramsPositionCosineDistance;
-        }
-        else if (matchType === MatchFunctionType.space) {
-            matchFunction = getNGramsSpaceCosineDistance;
-        }
         var i = 0;
         var topDistanceVector = new Float32Array(topSize);
         topDistanceVector.fill(-1.1);
@@ -200,8 +147,7 @@ var SimpleCat = /** @class */ (function () {
         topIndexVector.fill(-1);
         while (this._models[i]) {
             var templateModel = this._models[i].model;
-            var cosineDistance = matchFunction(templateModel, searchModel);
-            distances[i] = cosineDistance;
+            var cosineDistance = getNGramsCosineDistance(templateModel, searchModel, this.weightFunction);
             var vacantIndex = VectorFindVacantIndex(topDistanceVector, cosineDistance);
             if (vacantIndex > -1) {
                 VectorShiftRight(topDistanceVector, cosineDistance, vacantIndex);
@@ -210,11 +156,8 @@ var SimpleCat = /** @class */ (function () {
             i++;
         }
         return {
-            distances: distances,
-            top: {
-                distances: topDistanceVector,
-                indexes: topIndexVector,
-            }
+            distances: topDistanceVector,
+            indexes: topIndexVector,
         };
     };
     return SimpleCat;

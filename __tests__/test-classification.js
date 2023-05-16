@@ -1,25 +1,17 @@
 const { 
   SimpleCat,
   standartTextModel,
-  MatchFunctionType,
+  standartWeightFunction,
 } = require('../index.js');
 
-test('classificator test 1', () => {
-  const classificator = new SimpleCat([
-    {text: 'покажи мне', descriptor: {}}, 
-    {text: 'показать', descriptor: {}}, 
-    {text: 'выбрать', descriptor: {}}
-  ], standartTextModel);
+const classificator_test_1 = new SimpleCat([
+  {text: 'покажи мне', descriptor: {}}, 
+  {text: 'показать', descriptor: {}}, 
+  {text: 'выбрать', descriptor: {}}
+], standartTextModel, standartWeightFunction);
 
-  expect(classificator.match('покаж мне', MatchFunctionType.space, 3)).toStrictEqual(
-    {
-      distances: new Float32Array([0.6000000238418579, -0.3333333432674408, -1]),
-      top: {
-        distances: new Float32Array([0.6000000238418579, -0.3333333432674408, -1]),
-        indexes: new Int8Array([0,1,2]),
-      }
-    }
-  )
+test('classificator test 1 1', () => {
+  expect(classificator_test_1.match('покажи мне', 3).indexes[0]).toStrictEqual(0)
 })
 
 const classificator_test_2 = new SimpleCat([
@@ -27,54 +19,20 @@ const classificator_test_2 = new SimpleCat([
   {text: 'макаронная каша по итальянски', descriptor: {}}, 
   {text: 'итальянский суп десерт, а потом макароны', descriptor: {}},
   {text: 'макароны в италии', descriptor: {}},
-], standartTextModel);
+], standartTextModel, standartWeightFunction);
 
 test('classificator test 2 1', () => {
-  expect(classificator_test_2.match('макароны по итальянски', MatchFunctionType.space, 4)).toStrictEqual(
-    {
-      distances: new Float32Array([
-        0.3333333432674408,
-        0.4736842215061188,
-        0.1666666716337204,
-        0.4545454680919647
-      ]),
-      top: {
-        distances: new Float32Array([
-          0.4736842215061188,
-          0.4545454680919647,
-          0.3333333432674408,
-          0.1666666716337204,
-        ]),
-        indexes: new Int8Array([1,3,0,2])
-      }
-    }
-  )
+  expect(classificator_test_2.match('макароны по итальянски', 4).indexes[0]).toStrictEqual(1)
 })
 
 const classificator_test_3 = new SimpleCat([
   {text: `Мне очень понравился торт. Очень вкусный, состав хороший. Будем покупать, рекомендую!`, descriptor: {}}, 
   {text: 'Какой-то странный, но вкусный торт с привкусом манго', descriptor: {}}, 
   {text: 'Ваш магазин выручил меня, это был сногсшибательный торт', descriptor: {}},
-], standartTextModel);
+], standartTextModel, standartWeightFunction);
 
 test('classificator test 3 1', () => {
-  expect(classificator_test_3.match('Нам торт понравился, будем покупать больше', MatchFunctionType.space, 3)).toStrictEqual(
-    {
-      distances: new Float32Array([
-        -0.2083333283662796,
-        -0.8666666746139526,
-        -0.8709677457809448
-      ]),
-      top: {
-        distances: new Float32Array([
-          -0.2083333283662796,
-          -0.8666666746139526,
-          -0.8709677457809448
-        ]),
-        indexes: new Int8Array([0,1,2])
-      }
-    }
-  )
+  expect(classificator_test_3.match('Нам торт понравился, будем покупать больше', 3).indexes[0]).toStrictEqual(0)
 })
 
 const chehov = [
@@ -117,128 +75,40 @@ const chehov = [
   {text: `Нельзя требовать от грязи, чтобы она не была грязью. «Драма на охоте»`, descriptor: {}},
 ];
 
-const classificator_test_4 = new SimpleCat(chehov, standartTextModel)
+const classificator_test_4 = new SimpleCat(chehov, standartTextModel, standartWeightFunction)
 
 test('classificator test 4 1', () => {
-  expect(classificator_test_4.match('Душа человека - прекрасна', MatchFunctionType.space, 5).top.indexes[0] = 0).toStrictEqual(0)
-})
-
-test('classificator test 4 2', () => {
-  expect(classificator_test_4.match('Душа человека - прекрасна', MatchFunctionType.position, 5).top.indexes[0] = 0).toStrictEqual(0)
+  expect(classificator_test_4.match('Душа человека - прекрасна', 5).indexes[0]).toStrictEqual(0)
 })
 
 const classificator_test_5 = new SimpleCat([
-  {text: `Мы ехали на белом велосипеде`, descriptor: {}}, 
-  {text: 'Мы ехали на зеленом велосипеде', descriptor: {}}, 
-  {text: 'Мы ехали на синем велосипеде', descriptor: {}},
-], standartTextModel);
+  {text: `Мы ехали на белом мотоциклете или велосипеде`, descriptor: {}}, 
+  {text: 'Мы ехали на зеленом мотоциклете или велосипеде', descriptor: {}}, 
+  {text: 'Мы ехали на синем мотоциклете или велосипеде', descriptor: {}},
+], standartTextModel, standartWeightFunction);
 
 test('classificator test 5 1', () => {
-  expect(classificator_test_5.match('Мы ехали на велосипеде', MatchFunctionType.space, 3)).toStrictEqual(
+  expect(classificator_test_5.match('Мы ехали на велосипеде', 3)).toStrictEqual(
     {
       distances: new Float32Array([
-        0.6681531071662903,
-        0.4444444477558136,
-        0.625
+        -0.016413073986768723,
+        -0.01880129612982273,
+        -0.09008202701807022,
       ]),
-      top: {
-        distances: new Float32Array([
-          0.6681531071662903,
-          0.625,
-          0.4444444477558136,
-        ]),
-        indexes: new Int8Array([0,2,1])
-      }
+      indexes: new Int8Array([0,2,1])
     }
   )
 })
 
 test('classificator test 5 2', () => {
-  expect(classificator_test_5.match('Мы ехали на велосипеде', MatchFunctionType.position, 3)).toStrictEqual(
+  expect(classificator_test_5.match('Мы ехали на мотоциклете', 3)).toStrictEqual(
     {
       distances: new Float32Array([
-        0.6848225593566895,
-        0.6034448146820068,
-        0.7240121364593506
+        0.07048476487398148,
+        0.07048476487398148,
+        -0.006469873245805502,
       ]),
-      top: {
-        distances: new Float32Array([
-          0.7240121364593506,
-          0.6848225593566895,
-          0.6034448146820068,
-        ]),
-        indexes: new Int8Array([2,0,1])
-      }
+      indexes: new Int8Array([0,2,1])
     }
-  )
-})
-
-const classificator_test_6 = new SimpleCat([
-  {text: `Мы ехали на велосипеде`, descriptor: {}}, 
-], standartTextModel);
-
-test('classificator test 6', () => {
-  const multiInput = () => {
-    const input = [`Мы ехали на белом велосипеде`, 'Мы ехали на зеленом велосипеде', 'Мы ехали на синем велосипеде'];
-    const results = [];
-
-    for (let index = 0; index < input.length; index++) {
-      const text = input[index];
-      results.push(classificator_test_6.match(text, MatchFunctionType.space, 1).distances);
-      results.push(classificator_test_6.match(text, MatchFunctionType.position, 1).distances);
-    }
-
-    return results;
-  }
-
-  expect(multiInput()).toStrictEqual(
-    [
-      new Float32Array([1]),
-      new Float32Array([0.9954850077629089]),
-      new Float32Array([1]),
-      new Float32Array([0.9927337765693665]),
-      new Float32Array([1]),
-      new Float32Array([0.9964648485183716]),
-    ]
-  )
-})
-
-const classificator_test_7 = new SimpleCat([
-  {text: `белка на едет белом велосипеде`, descriptor: {}}, 
-], standartTextModel);
-
-test('classificator test 7 1', () => {
-  expect(classificator_test_7.match('на белом-белом велосипеде едет белка', MatchFunctionType.space, 1).distances).toStrictEqual(
-    new Float32Array([
-      1,
-    ])
-  )
-})
-
-test('classificator test 7 2', () => {
-  expect(classificator_test_7.match('на белом-белом велосипеде едет белка', MatchFunctionType.position, 1).distances).toStrictEqual(
-    new Float32Array([
-      0.7704740166664124,
-    ])
-  )
-})
-
-const classificator_test_8 = new SimpleCat([
-  {text: `Нам торт не понравился, не будем покупать больше`, descriptor: {}}, 
-], standartTextModel);
-
-test('classificator test 8 1', () => {
-  expect(classificator_test_8.match('Нам торт понравился, будем покупать больше', MatchFunctionType.space, 1).distances).toStrictEqual(
-    new Float32Array([
-      0.8461538553237915,
-    ])
-  )
-})
-
-test('classificator test 8 2', () => {
-  expect(classificator_test_8.match('Нам торт не понравился, не будем покупать больше', MatchFunctionType.space, 1).distances).toStrictEqual(
-    new Float32Array([
-      1,
-    ])
   )
 })
