@@ -4,7 +4,7 @@ const {
   VectorShiftRight,
   standartTextModel,
   standartWeightFunction,
-  getMatchScore,
+  getMatchVector,
 } = require('../index.js');
 
 test('check grams 1', () => {
@@ -65,10 +65,10 @@ test('check match score 1', () => {
     const templateModel = standartTextModel('размышление');
     const searchModel = standartTextModel('размышляющий');
 
-    return getMatchScore(templateModel, searchModel, standartWeightFunction);
+    return getMatchVector(templateModel, searchModel, standartWeightFunction);
   }
  
-  expect(checkMatchScore()).toStrictEqual(75);
+  expect(checkMatchScore()).toStrictEqual(new Int16Array([15,15,15,15,15]));
 });
 
 test('check match score 2', () => {
@@ -76,10 +76,10 @@ test('check match score 2', () => {
     const templateModel = standartTextModel('размышление');
     const searchModel = standartTextModel('размышления');
 
-    return getMatchScore(templateModel, searchModel, standartWeightFunction);
+    return getMatchVector(templateModel, searchModel, standartWeightFunction);
   }
  
-  expect(checkMatchScore()).toStrictEqual(120);
+  expect(checkMatchScore()).toStrictEqual(new Int16Array([15,15,15,15,15,15,15,15]));
 });
 
 test('check match score 3', () => {
@@ -87,31 +87,31 @@ test('check match score 3', () => {
     const templateModel = standartTextModel('парампампампам');
     const searchModel = standartTextModel('парампампампам');
 
-    return getMatchScore(templateModel, searchModel, standartWeightFunction);
+    return getMatchVector(templateModel, searchModel, standartWeightFunction);
   }
  
-  expect(checkMatchScore()).toStrictEqual(180);
+  expect(checkMatchScore()).toStrictEqual(new Int16Array([15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15]));
 });
 
 test('check match score 4', () => {
   const templateModel = standartTextModel('парампампамляля');
   const searchModel = standartTextModel('парампампам');
 
-  expect(getMatchScore(templateModel, searchModel, standartWeightFunction)).toBe(135)
+  expect(getMatchVector(templateModel, searchModel, standartWeightFunction)).toStrictEqual(new Int16Array([15, 15, 15, 15, 15, 15, 15, 15, 15]))
 })
 
 test('check match score 5', () => {
   const templateModel = standartTextModel('парампампампам');
   const searchModel = standartTextModel('парампампампам');
 
-  expect(getMatchScore(templateModel, searchModel, standartWeightFunction)).toBe(180)
+  expect(getMatchVector(templateModel, searchModel, standartWeightFunction)).toStrictEqual(new Int16Array([15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15]))
 })
 
 test('check match score 6', () => {
   const templateModel = standartTextModel('парампампампам');
   const searchModel = standartTextModel('слово');
 
-  expect(getMatchScore(templateModel, searchModel, standartWeightFunction)).toBe(0)
+  expect(getMatchVector(templateModel, searchModel, standartWeightFunction)).toStrictEqual(new Int16Array([]))
 })
 
 test('vector find vacant index 1', () => {

@@ -1,12 +1,13 @@
 {
     "name": "simple-cat",
-    "version": "0.0.2",
+    "version": "1.0.1",
+    "author": "kodoi",
+    "description": "Light tool for text classification",
     "scripts": {
       "test-functions": "jest test-functions.js",
-      "test-classification": "jest test-classification.js",
+      "test": "jest test-classification.js",
       "build": "tsc --build"
     },
-    "private": true,
     "dependencies": {
     },
     "license": "MIT",

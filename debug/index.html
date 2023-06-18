@@ -9,11 +9,37 @@
 
 <body>
   <script>
-    const debug = new SimpleCat([
-      {text: `тестовая фраза`, descriptor: {}}, 
-    ], standartTextModel);
+    const getItems = () => {
+      return [
+        {
+          options: ['итальянская пицца', 'пицца', 'обед', 'ужин'],
+          descriptor: { id: 1 },
+        },
+        {
+          options: ['пицца 4 сыра', 'пицца', 'ужин'],
+          descriptor: { id: 1 },
+        },
+        {
+          options: ['макароны по итальянски', 'спаггети', 'обед', 'ужин'],
+          descriptor: { id: 2 },
+        },
+        {
+          options: ['чиабатта испанская', 'хлеб'],
+          descriptor: { id: 3 },
+        },
+        {
+          options: ['лосось с авокадом и рукколой', 'завтрак'],
+          descriptor: { id: 4 },
+        },
+        {
+          options: ['стейк из лопатки теленка', 'обед', 'ужин'],
+          descriptor: { id: 5 },
+        },
+      ]
+    }
 
-    console.log(debug);
+    const items = getItems();
+    const simpleCat = new SimpleCat(items, standartTextModel, standartWeightFunction);
   </script>
 </body>
 

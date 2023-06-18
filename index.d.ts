@@ -11,7 +11,7 @@ interface ITextModel {
     length: number;
 }
 interface ITextOption<A> {
-    text: string;
+    options: string[];
     descriptor: A;
 }
 declare const standartWeightFunction: WeightFunction;
@@ -22,7 +22,7 @@ declare function getNGrams(words: string[], gramSize: number): {
     grams: NGrams;
     length: number;
 };
-declare function getMatchScore(templateModel: ITextModel, searchModel: ITextModel, weightFunction: WeightFunction): number;
+declare function getMatchVector(templateModel: ITextModel, searchModel: ITextModel, weightFunction: WeightFunction): Int16Array;
 declare class SimpleCat<D> {
     private textToModel;
     private weightFunction;
@@ -33,4 +33,4 @@ declare class SimpleCat<D> {
         indexes: Int16Array;
     };
 }
-export { SimpleCat, standartTextModel, standartWeightFunction, getNGrams, getMatchScore, VectorFindVacantIndex, VectorShiftRight, };
+export { SimpleCat, standartTextModel, standartWeightFunction, getNGrams, getMatchVector, VectorFindVacantIndex, VectorShiftRight, };

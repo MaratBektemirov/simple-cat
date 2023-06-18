@@ -13,7 +13,7 @@ interface ITextModelWithDescriptor<A> {
 }
 
 interface ITextOption<A> {
-    text: string,
+    options: string[],
     descriptor: A
 }
 
@@ -102,8 +102,8 @@ function getNGrams(words: string[], gramSize: number) {
     return { grams, length };
 }
 
-function getMatchScore(templateModel: ITextModel, searchModel: ITextModel, weightFunction: WeightFunction) {
-    let score = 0
+function getMatchVector(templateModel: ITextModel, searchModel: ITextModel, weightFunction: WeightFunction) {
+    const vector = [];
 
     for (const searchGram of Object.keys(searchModel.grams)) {
         const templateGramPositions = templateModel.grams[searchGram];
@@ -122,16 +122,17 @@ function getMatchScore(templateModel: ITextModel, searchModel: ITextModel, weigh
                 break;
             }
 
-            score += weightFunction(templatePositions, searchPositions);
+            const weight = weightFunction(templatePositions, searchPositions);
+            vector.push(weight);
             i++;
         }
     }
 
-    return score;
+    return new Int16Array(vector);
 }
 
 class SimpleCat<D> {
-    private _models: ITextModelWithDescriptor<D>[] = [];
+    private _models: ITextModelWithDescriptor<D>[][] = [];
 
     constructor(
         texts: ITextOption<D>[],
@@ -144,15 +145,25 @@ class SimpleCat<D> {
             console.error('Please define the text to model function');
         }
     
-        while (texts[i]) {
-            const { text, descriptor } = texts[i];
+        while (i < texts.length) {
+            const { options, descriptor } = texts[i];
 
-            this._models.push(
-                {
-                    model: this.textToModel(text),
-                    descriptor,
-                }
-            );
+            let j = 0;
+
+            const models: ITextModelWithDescriptor<D>[] = [];
+            
+            while (j < options.length) {
+                models.push(
+                    {
+                        model: this.textToModel(options[j]),
+                        descriptor,
+                    }
+                );
+
+                j++;
+            }
+
+            this._models.push(models);
 
             i++;
         }
@@ -166,15 +177,22 @@ class SimpleCat<D> {
         topIndexVector.fill(-1);
 
         let i = 0;
-        while (this._models[i]) {
-            const templateModel = this._models[i].model;
-            const score = getMatchScore(templateModel, searchModel, this.weightFunction);
+        while (i < this._models.length) {
+            let j = 0;
 
-            const vacantIndex = VectorFindVacantIndex(topScoresVector, score);
+            while (j < this._models[i].length) {
+                const templateModel = this._models[i][j].model;
+                const matchVector = getMatchVector(templateModel, searchModel, this.weightFunction);
+                const score = matchVector.reduce((acc, weight) => acc + weight, 0);
+    
+                const vacantIndex = VectorFindVacantIndex(topScoresVector, score);
+    
+                if (vacantIndex > -1) {
+                    VectorShiftRight(topScoresVector, score, vacantIndex);
+                    VectorShiftRight(topIndexVector, i, vacantIndex);
+                }
 
-            if (vacantIndex > -1) {
-                VectorShiftRight(topScoresVector, score, vacantIndex);
-                VectorShiftRight(topIndexVector, i, vacantIndex);
+                j++;
             }
 
             i++;
@@ -192,7 +210,7 @@ export {
     standartTextModel,
     standartWeightFunction,
     getNGrams,
-    getMatchScore,
+    getMatchVector,
     VectorFindVacantIndex,
     VectorShiftRight,
 }

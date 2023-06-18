@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.VectorShiftRight = exports.VectorFindVacantIndex = exports.getMatchScore = exports.getNGrams = exports.standartWeightFunction = exports.standartTextModel = exports.SimpleCat = void 0;
+exports.VectorShiftRight = exports.VectorFindVacantIndex = exports.getMatchVector = exports.getNGrams = exports.standartWeightFunction = exports.standartTextModel = exports.SimpleCat = void 0;
 var wordRegexp = /[^A-Za-zА-Яа-я ]/g;
 var splitWordRegexp = /\s+/g;
 var standartWeightFunction = function (templatePositions, searchPositions) {
@@ -13,8 +13,7 @@ exports.standartWeightFunction = standartWeightFunction;
 var standartTextModel = function (text) {
     var gramSize = 3;
     var words = text.split(splitWordRegexp);
-    var _a = getNGrams(words, gramSize), grams = _a.grams, length = _a.length;
-    return { grams: grams, length: length };
+    return getNGrams(words, gramSize);
 };
 exports.standartTextModel = standartTextModel;
 var VectorFindVacantIndex = function (vector, candidate) {
@@ -71,8 +70,8 @@ function getNGrams(words, gramSize) {
     return { grams: grams, length: length };
 }
 exports.getNGrams = getNGrams;
-function getMatchScore(templateModel, searchModel, weightFunction) {
-    var score = 0;
+function getMatchVector(templateModel, searchModel, weightFunction) {
+    var vector = [];
     for (var _i = 0, _a = Object.keys(searchModel.grams); _i < _a.length; _i++) {
         var searchGram = _a[_i];
         var templateGramPositions = templateModel.grams[searchGram];
@@ -86,13 +85,14 @@ function getMatchScore(templateModel, searchModel, weightFunction) {
             if (!searchPositions) {
                 break;
             }
-            score += weightFunction(templatePositions, searchPositions);
+            var weight = weightFunction(templatePositions, searchPositions);
+            vector.push(weight);
             i++;
         }
     }
-    return score;
+    return new Int16Array(vector);
 }
-exports.getMatchScore = getMatchScore;
+exports.getMatchVector = getMatchVector;
 var SimpleCat = /** @class */ (function () {
     function SimpleCat(texts, textToModel, weightFunction) {
         this.textToModel = textToModel;
@@ -102,12 +102,18 @@ var SimpleCat = /** @class */ (function () {
         if (typeof textToModel !== 'function') {
             console.error('Please define the text to model function');
         }
-        while (texts[i]) {
-            var _a = texts[i], text = _a.text, descriptor = _a.descriptor;
-            this._models.push({
-                model: this.textToModel(text),
-                descriptor: descriptor,
-            });
+        while (i < texts.length) {
+            var _a = texts[i], options = _a.options, descriptor = _a.descriptor;
+            var j = 0;
+            var models = [];
+            while (j < options.length) {
+                models.push({
+                    model: this.textToModel(options[j]),
+                    descriptor: descriptor,
+                });
+                j++;
+            }
+            this._models.push(models);
             i++;
         }
     }
@@ -117,13 +123,18 @@ var SimpleCat = /** @class */ (function () {
         var topIndexVector = new Int16Array(top);
         topIndexVector.fill(-1);
         var i = 0;
-        while (this._models[i]) {
-            var templateModel = this._models[i].model;
-            var score = getMatchScore(templateModel, searchModel, this.weightFunction);
-            var vacantIndex = VectorFindVacantIndex(topScoresVector, score);
-            if (vacantIndex > -1) {
-                VectorShiftRight(topScoresVector, score, vacantIndex);
-                VectorShiftRight(topIndexVector, i, vacantIndex);
+        while (i < this._models.length) {
+            var j = 0;
+            while (j < this._models[i].length) {
+                var templateModel = this._models[i][j].model;
+                var matchVector = getMatchVector(templateModel, searchModel, this.weightFunction);
+                var score = matchVector.reduce(function (acc, weight) { return acc + weight; }, 0);
+                var vacantIndex = VectorFindVacantIndex(topScoresVector, score);
+                if (vacantIndex > -1) {
+                    VectorShiftRight(topScoresVector, score, vacantIndex);
+                    VectorShiftRight(topIndexVector, i, vacantIndex);
+                }
+                j++;
             }
             i++;
         }
