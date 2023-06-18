@@ -1,7 +1,8 @@
 <div align="center">
-  <a href="http://typeorm.io/">
-    <img src="https://github.com/MaratBektemirov/simple-cat/raw/master/logo.svg" width="225" height="49">
-  </a>
+  <img src="https://github.com/MaratBektemirov/simple-cat/raw/master/big3.png" width="172" height="58">
+  <br>
+  <br>
+  <img src="https://github.com/MaratBektemirov/simple-cat/raw/master/logo.svg" width="225" height="49">
   <br>
   <br>
 	<a href="https://badge.fury.io/js/simple-cat">
@@ -13,11 +14,11 @@
 
 Simple-cat это простой инструмент для классификации текста
 который может быть запущен в NodeJS или браузере и может быть использован с TypeScript и JavaScript.
-Возможный спектр задач от систем поиска до классификации текстов (пользовательских отзывов, комментариев)
+Возможный спектр задач от легких систем поиска до классификации текстов (пользовательских отзывов, комментариев)
 
 Simple-cat в основе своей использует [N-грамм](https://ru.wikipedia.org/wiki/N-%D0%B3%D1%80%D0%B0%D0%BC%D0%BC%D0%B0), используются последовательности символов n-длины
 
-Zero-dependency, 1.7Kb в сжатом виде
+Zero-dependency, меньше 2Kb в сжатом виде
 
 ## Установка
 
@@ -25,7 +26,9 @@ Zero-dependency, 1.7Kb в сжатом виде
 npm install simple-cat
 ```
 
-## Примеры использования
+## API
+
+### Интерфейс класса SimpleCat
 
 ```typescript
 class SimpleCat<D> {
@@ -35,9 +38,22 @@ class SimpleCat<D> {
         indexes: Int16Array;
     };
 }
+
+interface ITextOption<A> {
+    options: string[];
+    descriptor: A;
+}
+
+interface ITextModel {
+    grams: NGrams;
+    length: number;
+}
+
+type TextToModel = (text: string) => ITextModel;
+type WeightFunction = (templatePositions: Int16Array, searchPositions: Int16Array) => number;
 ```
 
-Нечеткий поиск текста:
+### Нечеткий поиск текста
 
 ```typescript
 import { SimpleCat, standartTextModel, standartWeightFunction } from "simple-cat"
@@ -45,84 +61,80 @@ import { SimpleCat, standartTextModel, standartWeightFunction } from "simple-cat
 const getItems = () => {
   return [
     {
-      options: ['итальянская пицца','пицца','обед','ужин'],
-      descriptor: {id: 1},
-    },
-        {
-      options: ['пицца 4 сыра','пицца','ужин'],
+      options: ['итальянская пицца'],
       descriptor: {id: 1},
     },
     {
-      options: ['макароны по итальянски','спаггети','обед','ужин'],
+      options: ['пицца 4 сыра'],
       descriptor: {id: 2},
     },
     {
-      options: ['чиабатта испанская','хлеб'],
+      options: ['макароны по итальянски'],
       descriptor: {id: 3},
     },
     {
-      options: ['лосось с авокадом и рукколой','завтрак'],
+      options: ['бургер италия'],
       descriptor: {id: 4},
-    },
-    {
-      options: ['стейк из лопатки теленка','обед','ужин'],
-      descriptor: {id: 5},
-    },      
+    }
   ]
 }
 
 const items = getItems();
-const simpleCat = new SimpleCat(menuItems, standartTextModel, standartWeightFunction);
+const simpleCat = new SimpleCat(items, standartTextModel, standartWeightFunction);
 
 simpleCat.match('италия', 5);
 -> {
-    "scores": {
-        "0": 30,
-        "1": 26,
-        "2": 0,
-        "3": 0,
-        "4": 0
-    },
-    "indexes": {
-        "0": 0,
-        "1": 2,
-        "2": -1,
-        "3": -1,
-        "4": -1
-    }
+    "scores": [56,30,26],
+    "indexes": [3,0,2],
 }
-simpleCat.match('макароны', 5)
--> {
-    "scores": {
-        "0": 90,
-        "1": 0,
-        "2": 0,
-        "3": 0,
-        "4": 0
+```
+
+Получаем индексы элементов в которых есть хоть какие-то совпадения. Индексы отсортированы по релеватности, определяемой в weightFunction<br><br>
+
+### Поиск с опечаткой
+
+```typescript
+import { SimpleCat, standartTextModel, standartWeightFunction } from "simple-cat"
+
+const getItems = () => {
+  return [
+    {
+      options: ['агентство недвижимости'],
+      descriptor: {id: 1},
     },
-    "indexes": {
-        "0": 2,
-        "1": -1,
-        "2": -1,
-        "3": -1,
-        "4": -1
+    {
+      options: ['строительная компания'],
+      descriptor: {id: 2},
+    },
+    {
+      options: ['бюро по земельным разработкам'],
+      descriptor: {id: 3},
+    },
+    {
+      options: ['контора Игоря крутого'],
+      descriptor: {id: 4},
     }
+  ]
 }
-simpleCat.match('обед', 5)
+
+const items = getItems();
+const simpleCat = new SimpleCat(items, standartTextModel, standartWeightFunction);
+
+simpleCat.match('агенство', 5);
 -> {
-    "scores": {
-        "0": 30,
-        "1": 30,
-        "2": 30,
-        "3": 0,
-        "4": 0
-    },
-    "indexes": {
-        "0": 0,
-        "1": 2,
-        "2": 5,
-        "3": -1,
-        "4": -1
-    }
+    "scores": [52],
+    "indexes": [0],
+}
+
+simpleCat.match('кантора', 5);
+-> {
+    "scores": [45],
+    "indexes": [3],
+}
+
+simpleCat.match('контора', 5);
+-> {
+    "scores": [75],
+    "indexes": [3],
 }
 ```

@@ -3,6 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.VectorShiftRight = exports.VectorFindVacantIndex = exports.getMatchVector = exports.getNGrams = exports.standartWeightFunction = exports.standartTextModel = exports.SimpleCat = void 0;
 var wordRegexp = /[^A-Za-zА-Яа-я ]/g;
 var splitWordRegexp = /\s+/g;
+var scorePredicate = function (score) { return score > 0; };
+var indexPredicate = function (index) { return index > -1; };
+var matchVectorReducer = function (acc, weight) { return acc + weight; };
 var standartWeightFunction = function (templatePositions, searchPositions) {
     var wordIndexDiff = Math.abs(templatePositions[0] - searchPositions[0]) * 1;
     var gramIndexInWordDiff = Math.abs(templatePositions[1] - searchPositions[1]) * 4;
@@ -128,7 +131,7 @@ var SimpleCat = /** @class */ (function () {
             while (j < this._models[i].length) {
                 var templateModel = this._models[i][j].model;
                 var matchVector = getMatchVector(templateModel, searchModel, this.weightFunction);
-                var score = matchVector.reduce(function (acc, weight) { return acc + weight; }, 0);
+                var score = matchVector.reduce(matchVectorReducer, 0);
                 var vacantIndex = VectorFindVacantIndex(topScoresVector, score);
                 if (vacantIndex > -1) {
                     VectorShiftRight(topScoresVector, score, vacantIndex);
@@ -139,8 +142,8 @@ var SimpleCat = /** @class */ (function () {
             i++;
         }
         return {
-            scores: topScoresVector,
-            indexes: topIndexVector,
+            scores: topScoresVector.filter(scorePredicate),
+            indexes: topIndexVector.filter(indexPredicate),
         };
     };
     return SimpleCat;

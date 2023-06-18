@@ -137,8 +137,7 @@ test('classificator test 6 1', () => {
     scores: new Int16Array([
       75,
       60,
-      0,
     ]),
-    indexes: new Int16Array([0,1,-1])
+    indexes: new Int16Array([0,1])
   })
 })

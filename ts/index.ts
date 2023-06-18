@@ -20,6 +20,11 @@ interface ITextOption<A> {
 const wordRegexp = /[^A-Za-zА-Яа-я ]/g;
 const splitWordRegexp = /\s+/g;
 
+const scorePredicate = (score: number) => score > 0;
+const indexPredicate = (index: number) => index > -1;
+
+const matchVectorReducer = (acc: number, weight: number) => acc + weight;
+
 const standartWeightFunction: WeightFunction = (templatePositions, searchPositions) => {
     const wordIndexDiff = Math.abs(templatePositions[0] - searchPositions[0]) * 1;
     const gramIndexInWordDiff = Math.abs(templatePositions[1] - searchPositions[1]) * 4
@@ -183,7 +188,7 @@ class SimpleCat<D> {
             while (j < this._models[i].length) {
                 const templateModel = this._models[i][j].model;
                 const matchVector = getMatchVector(templateModel, searchModel, this.weightFunction);
-                const score = matchVector.reduce((acc, weight) => acc + weight, 0);
+                const score = matchVector.reduce(matchVectorReducer, 0);
     
                 const vacantIndex = VectorFindVacantIndex(topScoresVector, score);
     
@@ -199,8 +204,8 @@ class SimpleCat<D> {
         }
 
         return {
-            scores: topScoresVector,
-            indexes: topIndexVector,
+            scores: topScoresVector.filter(scorePredicate),
+            indexes: topIndexVector.filter(indexPredicate),
         };
     }
 }

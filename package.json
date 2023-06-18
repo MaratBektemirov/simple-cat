@@ -1,6 +1,6 @@
 {
     "name": "simple-cat",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "author": "kodoi",
     "description": "Light tool for text classification",
     "scripts": {
