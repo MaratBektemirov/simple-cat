@@ -11,11 +11,26 @@
   <script>
     const getItems = () => {
       return [
+        {
+          options: ['вкусный хороший замечательный прекрасный классный фантастический блестящий чудесный невероятный волшебный ужасный оригинальный шикарный дивный чудный совершенный веселый интересный'],
+          descriptor: {type: 'positive'},
+        },
+        {
+          options: ['безвкусный плохой ужасный жуткий отвратительный безобразный наводящий ужас пугающий противный печальный скучный приторный'],
+          descriptor: {type: 'negative'},
+        },
       ]
     }
 
+    const negPosWeightFunction = (templatePositions, searchPositions) => {
+        const gramIndexInWordDiff = Math.abs(templatePositions[1] - searchPositions[1]) * 4
+        const positionWeight = 5 - gramIndexInWordDiff;
+
+        return 10 + Math.max(0, positionWeight);    
+    }
+
     const items = getItems();
-    const simpleCat = new SimpleCat(items, standartTextModel, standartWeightFunction);
+    const simpleCat = new SimpleCat(items, standartTextModel, negPosWeightFunction);
   </script>
 </body>
 

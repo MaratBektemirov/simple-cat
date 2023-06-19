@@ -218,4 +218,5 @@ export {
     getMatchVector,
     VectorFindVacantIndex,
     VectorShiftRight,
+    WeightFunction,
 }
