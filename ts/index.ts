@@ -1,167 +1,120 @@
-type TextToModel = (text: string) => ITextModel;
+type TextToGramModel = (text: string, gramSize: number, extensions: ITextExtension[]) => IGramModel;
 type WeightFunction = (templatePositions: Int16Array, searchPositions: Int16Array) => number;
 type NGrams = {[key: string]: {positions: Int16Array[], indexes: number[]}};
 
-interface ITextModel {
+interface IGramModel {
     grams: NGrams;
     length: number;
 }
 
-interface ITextModelWithDescriptor<A> {
-    model: ITextModel,
-    descriptor: A
+interface IGramModelWrapper<A> {
+    model: IGramModel,
+    data: A,
 }
 
 interface ITextOption<A> {
     options: string[],
-    descriptor: A
+    data: A
 }
 
-const wordRegexp = /[^A-Za-zА-Яа-я ]/g;
-const splitWordRegexp = /\s+/g;
+type ITextExtension = (wordsAcc: string[]) => any;
 
-const scorePredicate = (score: number) => score > 0;
-const indexPredicate = (index: number) => index > -1;
-
-const matchVectorReducer = (acc: number, weight: number) => acc + weight;
-
-const standartWeightFunction: WeightFunction = (templatePositions, searchPositions) => {
-    const wordIndexDiff = Math.abs(templatePositions[0] - searchPositions[0]) * 1;
-    const gramIndexInWordDiff = Math.abs(templatePositions[1] - searchPositions[1]) * 4
-    const positionWeight = 5 - wordIndexDiff - gramIndexInWordDiff;
-
-    return 10 + Math.max(0, positionWeight);    
-}
-
-const standartTextModel: TextToModel = (text: string) => {
-    const gramSize = 3;
-    const words = text.split(splitWordRegexp);
-
-    return getNGrams(words, gramSize);
-}
-
-const VectorFindVacantIndex = (vector: Int16Array, candidate: number) => {
-    let i = 0;
-
-    while (i < vector.length) {
-        if (candidate > vector[i]) {
-            return i;
+const STUFF = {
+    wordRegexp: /[^A-Za-zА-Яа-я ]/g,
+    splitWordRegexp: /\s+/g,
+    symbols: {
+        ru: {
+            vowel: {
+                а: "а",
+                и: "и",
+                й: "й",
+                о: "о",
+                у: "у",
+                ы: "ы",
+                э: "э",
+                е: "е",
+                я: "я",
+                ь: "ь",
+            },
+            consonant: {
+                б: "б",
+                в: "в",
+                г: "г",
+                д: "д",
+                ж: "ж",
+                з: "з",
+                й: "й",
+                к: "к",
+                л: "л",
+                м: "м",
+                н: "н",
+                п: "п",
+                р: "р",
+                с: "с",
+                т: "т",
+                ф: "ф",
+                х: "х",
+                ц: "ц",
+                ч: "ч",
+                ш: "ш",
+                щ: "щ",
+            }
         }
+    },
+    extensions: {
+        ru: {
+            fluentVowels: (wordsAcc: string[]) => {
+                const ruVowelSymbols = STUFF.symbols.ru.vowel;
 
-        i++;
-    }
+                const word = wordsAcc[0];
 
-    return -1;
-}
+                if (!word) {
+                    return;
+                }
 
-const VectorShiftRight = (vector: Int16Array, value: number, index: number) => {
-    let i = vector.length - 1;
-
-    while (i > index) {
-        vector[i] = vector[i - 1];
-        i--;
-    }
-
-    vector[index] = value;
-
-    return vector;
-}
-
-function getNGrams(words: string[], gramSize: number) {
-    if (typeof gramSize !== 'number') {
-        console.error('Please define size of grams');
-    }
-
-    const grams: NGrams = {};
-    const addGram = (gram: string, absoluteGramIndex: number, wordIndex: number, gramInWordIndex: number) => {
-        grams[gram] = grams[gram] || {positions: [], indexes: []};
-        grams[gram].positions.push(new Int16Array([wordIndex, gramInWordIndex]));
-        grams[gram].indexes.push(absoluteGramIndex);
-    };
-
-    let i = 0;
-    let absoluteGramIndex = 0;
-
-    while (words[i]) {
-        const word = words[i].toLowerCase().replace(wordRegexp, '');
-
-        if (word.length < gramSize) {
-            addGram(word, absoluteGramIndex, i, 0);
-            absoluteGramIndex++;
-        } else {
-            let j = 0;
-            while (word[j + gramSize - 1]) {
-                let gram = word.slice(j, j + gramSize);
-                addGram(gram, absoluteGramIndex, i, j);
+                let wordWithoutVowel = word[0];
+                let i = 1;
     
-                j++;
-                absoluteGramIndex++;
+                while (i < word.length) {
+                    if (!ruVowelSymbols[word[i]]) {
+                        wordWithoutVowel += word[i];
+                    }
+    
+                    i++;
+                }
+                
+                wordsAcc.push(wordWithoutVowel);
             }
-        }
-
-        i++;
+        },
     }
-
-    const length = absoluteGramIndex;
-
-    return { grams, length };
-}
-
-function getMatchVector(templateModel: ITextModel, searchModel: ITextModel, weightFunction: WeightFunction) {
-    const vector = [];
-
-    for (const searchGram of Object.keys(searchModel.grams)) {
-        const templateGramPositions = templateModel.grams[searchGram];
-
-        if (!templateGramPositions) continue;
-
-        const searchGramPositions = searchModel.grams[searchGram];
-
-        let i = 0;
-
-        while (i < templateGramPositions.indexes.length) {
-            const templatePositions = templateGramPositions.positions[i];
-            const searchPositions = searchGramPositions.positions[i];
-
-            if (!searchPositions) {
-                break;
-            }
-
-            const weight = weightFunction(templatePositions, searchPositions);
-            vector.push(weight);
-            i++;
-        }
-    }
-
-    return new Int16Array(vector);
 }
 
 class SimpleCat<D> {
-    private _models: ITextModelWithDescriptor<D>[][] = [];
+    static STUFF = STUFF;
+
+    private _models: IGramModelWrapper<D>[][] = [];
 
     constructor(
         texts: ITextOption<D>[],
-        private textToModel: TextToModel,
-        private weightFunction: WeightFunction,
+        private extensions: ITextExtension[] = [],
+        private gramSize = 3,
     ) {
         let i = 0;
-
-        if (typeof textToModel !== 'function') {
-            console.error('Please define the text to model function');
-        }
     
         while (i < texts.length) {
-            const { options, descriptor } = texts[i];
+            const { options, data } = texts[i];
 
             let j = 0;
 
-            const models: ITextModelWithDescriptor<D>[] = [];
+            const models: IGramModelWrapper<D>[] = [];
             
             while (j < options.length) {
+                const model = this.getNGramsModel(options[j], this.gramSize, this.extensions);
+
                 models.push(
                     {
-                        model: this.textToModel(options[j]),
-                        descriptor,
+                        model,
+                        data,
                     }
                 );
 
@@ -174,27 +127,166 @@ class SimpleCat<D> {
         }
     }
 
+    addGram(grams: NGrams, gram: string, absoluteGramIndex: number, wordIndex: number, gramInWordIndex: number) {
+        grams[gram] = grams[gram] || {positions: [], indexes: []};
+        grams[gram].positions.push(new Int16Array([wordIndex, gramInWordIndex]));
+        grams[gram].indexes.push(absoluteGramIndex);
+    };
+
+    _getNGramsModel(words: string[], gramSize: number, extensions: ITextExtension[]) {    
+        const grams: NGrams = {};
+    
+        let w = 0;
+        let absoluteGramIndex = 0;
+    
+        while (w < words.length) {
+            const wordsAcc = [words[w].toLowerCase().replace(STUFF.wordRegexp, '')];
+
+            let e = 0;
+            while (e < extensions.length) {
+                extensions[e](wordsAcc);
+                e++;
+            }
+
+            let wa = 0;
+            while (wa < wordsAcc.length) {
+                const word = wordsAcc[wa];
+
+                if (word.length < gramSize) {
+                    if (word.length > 1) {
+                        this.addGram(grams, word, absoluteGramIndex, w, 0);
+                    }
+
+                    if (wa === 0) {
+                        absoluteGramIndex++;
+                    }
+                } else {
+                    let g = 0;
+                    while (word[g + gramSize - 1]) {
+                        let gram = word.slice(g, g + gramSize);
+                        this.addGram(grams, gram, absoluteGramIndex, w, g);
+            
+                        g++;
+
+                        if (wa === 0) {
+                            absoluteGramIndex++;
+                        }
+                    }
+                }
+
+                wa++;
+            }
+    
+            w++;
+        }
+    
+        const length = absoluteGramIndex;
+    
+        return { grams, length };
+    }
+    
+    getMatchVector(templateModel: IGramModel, searchModel: IGramModel, weightFunction: WeightFunction) {
+        const vector = [];
+    
+        for (const searchGram of Object.keys(searchModel.grams)) {
+            const templateGramPositions = templateModel.grams[searchGram];
+    
+            if (!templateGramPositions) continue;
+    
+            const searchGramPositions = searchModel.grams[searchGram];
+    
+            let i = 0;
+    
+            while (i < templateGramPositions.indexes.length) {
+                const templatePositions = templateGramPositions.positions[i];
+                const searchPositions = searchGramPositions.positions[i];
+    
+                if (!searchPositions) {
+                    break;
+                }
+    
+                const weight = weightFunction(templatePositions, searchPositions);
+                vector.push(weight);
+                i++;
+            }
+        }
+    
+        return new Int16Array(vector);
+    }
+
+    scorePredicate(score: number) {return score > 0}
+    indexPredicate(index: number) {return index > -1}
+    matchVectorReducer(acc: number, weight: number) {return acc + weight};
+
+    vectorFindVacantIndex(vector: Int16Array, candidate: number) {
+        let i = 0;
+
+        while (i < vector.length) {
+            if (candidate > vector[i]) {
+                return i;
+            }
+
+            i++;
+        }
+
+        return -1;
+    }
+
+    vectorShiftRight(vector: Int16Array, value: number, index: number) {
+        let i = vector.length - 1;
+
+        while (i > index) {
+            vector[i] = vector[i - 1];
+            i--;
+        }
+
+        vector[index] = value;
+
+        return vector;
+    }
+
+    weightFunction: WeightFunction = (templatePositions, searchPositions) => {
+        const wordIndexDiff = Math.abs(templatePositions[0] - searchPositions[0]) * 1;
+        const gramIndexInWordDiff = Math.abs(templatePositions[1] - searchPositions[1]) * 4
+        const positionWeight = 5 - wordIndexDiff - gramIndexInWordDiff;
+
+        return 10 + Math.max(0, positionWeight);    
+    }
+
+    getNGramsModel: TextToGramModel = (text: string, gramSize: number, extensions: ITextExtension[]) => {
+        const words = text.split(SimpleCat.STUFF.splitWordRegexp);
+
+        return this._getNGramsModel(words, gramSize, extensions);
+    }
+
     match(text: string, top: number) {
-        const searchModel = this.textToModel(text);
+        const searchModel = this.getNGramsModel(text, this.gramSize, this.extensions);
 
         const topScoresVector = new Int16Array(top);
+
         const topIndexVector = new Int16Array(top);
         topIndexVector.fill(-1);
 
+        const topOptionVector = new Int16Array(top);
+        topOptionVector.fill(-1);
+        
         let i = 0;
         while (i < this._models.length) {
             let j = 0;
 
             while (j < this._models[i].length) {
                 const templateModel = this._models[i][j].model;
-                const matchVector = getMatchVector(templateModel, searchModel, this.weightFunction);
-                const score = matchVector.reduce(matchVectorReducer, 0);
+
+                const matchVector = this.getMatchVector(templateModel, searchModel, this.weightFunction);
+
+                const score = matchVector.reduce(this.matchVectorReducer, 0);
     
-                const vacantIndex = VectorFindVacantIndex(topScoresVector, score);
+                const vacantIndex = this.vectorFindVacantIndex(topScoresVector, score);
     
                 if (vacantIndex > -1) {
-                    VectorShiftRight(topScoresVector, score, vacantIndex);
-                    VectorShiftRight(topIndexVector, i, vacantIndex);
+                    this.vectorShiftRight(topScoresVector, score, vacantIndex);
+                    this.vectorShiftRight(topIndexVector, i, vacantIndex);
+                    this.vectorShiftRight(topOptionVector, j, vacantIndex);
                 }
 
                 j++;
@@ -204,18 +296,13 @@ class SimpleCat<D> {
         }
 
         return {
-            scores: topScoresVector.filter(scorePredicate),
-            indexes: topIndexVector.filter(indexPredicate),
+            scores: topScoresVector.filter(this.scorePredicate),
+            indexes: topIndexVector.filter(this.indexPredicate),
+            options: topOptionVector.filter(this.indexPredicate),
         };
     }
 }
 
 export {
     SimpleCat,
-    standartTextModel,
-    standartWeightFunction,
-    getNGrams,
-    getMatchVector,
-    VectorFindVacantIndex,
-    VectorShiftRight,
 }

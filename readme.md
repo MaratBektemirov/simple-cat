@@ -1,8 +1,5 @@
 <div align="center">
-  <img src="https://github.com/MaratBektemirov/simple-cat/raw/master/big3.png" width="172" height="58">
-  <br>
-  <br>
-  <img src="https://github.com/MaratBektemirov/simple-cat/raw/master/logo.svg" width="225" height="49">
+  <img src="https://github.com/MaratBektemirov/simple-cat/raw/master/logo.png" width="500" height="69">
   <br>
   <br>
 	<a href="https://badge.fury.io/js/simple-cat">
@@ -12,11 +9,8 @@
   <br>
 </div>
 
-Simple-cat это простой инструмент для классификации текста
-который может быть запущен в NodeJS или браузере и может быть использован с TypeScript и JavaScript.
-Возможный спектр задач от легких систем поиска до классификации текстов (пользовательских отзывов, комментариев)
-
-Simple-cat в основе своей использует [N-грамм](https://ru.wikipedia.org/wiki/N-%D0%B3%D1%80%D0%B0%D0%BC%D0%BC%D0%B0), используются последовательности символов n-длины
+Simple-cat это простой инструмент для нечеткого поиска, поиска с опечатками, приблизительного совпадения строк.
+Simple-cat в основе своей использует [N-грамм](https://ru.wikipedia.org/wiki/N-%D0%B3%D1%80%D0%B0%D0%BC%D0%BC%D0%B0), последовательности символов n-длины.
 
 Zero-dependency, меньше 2Kb в сжатом виде
 
@@ -26,115 +20,156 @@ Zero-dependency, меньше 2Kb в сжатом виде
 npm install simple-cat
 ```
 
-## API
+[Демо](https://maratbektemirov.github.io/simple-cat/)
 
-### Интерфейс класса SimpleCat
+## Примеры
+<br>
+
+### Алгоритм нечеткого поиска, возможность выдачи при опечатках пользователя
 
 ```typescript
-class SimpleCat<D> {
-    constructor(texts: ITextOption<D>[], textToModel: TextToModel, weightFunction: WeightFunction);
-    match(text: string, top: number): {
-        scores: Int16Array;
-        indexes: Int16Array;
-    };
+import { SimpleCat } from "simple-cat"
+
+const items = [
+    {
+      options: ['Премудрый пескарь'],
+      data: {id: 1},
+    },
+    {
+      options: ['Ясная погода'],
+      data: {id: 2},
+    },
+    {
+      options: ['Ромео и Джульетта'],
+      data: {id: 3},
+    },
+    {
+      options: ['Соколиная охота'],
+      data: {id: 4},
+    },
+    {
+      options: ['Ясный код'],
+      data: {id: 5},
+    },
+  ];
+
+const simpleCat = new SimpleCat(items);
+
+simpleCat.match('пагода', 3);
+-> {
+  "scores":{"0":28},
+  "indexes":{"0":1},
+  "options":{"0":0}
 }
 
-interface ITextOption<A> {
-    options: string[];
-    descriptor: A;
-}
+const result = simpleCat.match('пагода', 3);
+Array.from(result.indexes).map((index) => items[index]);
+-> [
+  {
+    "options":["Ясная погода"],
+    "data":{"id":2}
+  }
+]
 
-interface ITextModel {
-    grams: NGrams;
-    length: number;
-}
+simpleCat.match('пискарь', 3);
+Array.from(result.indexes).map((index) => items[index]);
+-> [
+  {
+    "options":["Премудрый пескарь"],
+    "data":{"id":1}
+  }
+]
 
-type TextToModel = (text: string) => ITextModel;
-type WeightFunction = (templatePositions: Int16Array, searchPositions: Int16Array) => number;
+simpleCat.match('ахота', 3);
+Array.from(result.indexes).map((index) => items[index]);
+-> [
+  {
+    "options":["Соколиная охота"],
+    "data":{"id":4}
+  }
+]
+
+simpleCat.match('ясный', 3);
+Array.from(result.indexes).map((index) => items[index]);
+-> [
+  {
+    "options":["Ясный код"],
+    "data":{"id":5}
+  },{
+    "options":["Ясная погода"],
+    "data":{"id":2}
+  }
+]
+
+simpleCat.match('ромио', 3);
+Array.from(result.indexes).map((index) => items[index]);
+-> [
+  {
+    "options":["Ромео и Джульетта"],
+    "data":{"id":3}
+  }
+]
 ```
+<br>
 
-### Нечеткий поиск текста
-
-```typescript
-import { SimpleCat, standartTextModel, standartWeightFunction } from "simple-cat"
-
-const getItems = () => {
-  return [
-    {
-      options: ['итальянская пицца'],
-      descriptor: {id: 1},
-    },
-    {
-      options: ['пицца 4 сыра'],
-      descriptor: {id: 2},
-    },
-    {
-      options: ['макароны по итальянски'],
-      descriptor: {id: 3},
-    },
-    {
-      options: ['бургер италия'],
-      descriptor: {id: 4},
-    }
-  ]
-}
-
-const items = getItems();
-const simpleCat = new SimpleCat(items, standartTextModel, standartWeightFunction);
-
-simpleCat.match('италия', 5);
--> {
-    "scores": [56,30,26],
-    "indexes": [3,0,2],
-}
-```
-
-Получаем индексы элементов в которых есть хоть какие-то совпадения. Индексы отсортированы по релеватности, определяемой в weightFunction<br><br>
-
-### Поиск с опечаткой
+### Увеличение качества поиска в результате подключения расширения
 
 ```typescript
-import { SimpleCat, standartTextModel, standartWeightFunction } from "simple-cat"
+import { SimpleCat } from "simple-cat"
 
-const getItems = () => {
-  return [
+const items = [
     {
-      options: ['агентство недвижимости'],
-      descriptor: {id: 1},
+      options: ['Отцы и дети'],
+      data: {id: 1},
     },
     {
-      options: ['строительная компания'],
-      descriptor: {id: 2},
+      options: ['У меня нет сна уже 3 день'],
+      data: {id: 2},
     },
     {
-      options: ['бюро по земельным разработкам'],
-      descriptor: {id: 3},
+      options: ['У меня даже пня нет'],
+      data: {id: 3},
     },
-    {
-      options: ['контора Игоря крутого'],
-      descriptor: {id: 4},
-    }
-  ]
-}
+];
 
-const items = getItems();
-const simpleCat = new SimpleCat(items, standartTextModel, standartWeightFunction);
+const simpleCat = new SimpleCat(items, [SimpleCat.STUFF.extensions.ru.fluentVowels]);
 
-simpleCat.match('агенство', 5);
--> {
-    "scores": [52],
-    "indexes": [0],
-}
+const result = simpleCat.match('отец', 3);
+Array.from(result.indexes).map((index) => items[index]);
+-> [
+  {
+    "options":["Отцы и дети"],
+    "data":{"id":1}
+  }
+]
 
-simpleCat.match('кантора', 5);
--> {
-    "scores": [45],
-    "indexes": [3],
-}
+const result = simpleCat.match('дите', 3);
+Array.from(result.indexes).map((index) => items[index]);
+-> [
+  {
+    "options":["Отцы и дети"],
+    "data":{"id":1}
+  }
+]
 
-simpleCat.match('контора', 5);
--> {
-    "scores": [75],
-    "indexes": [3],
-}
+const result = simpleCat.match('пень', 3);
+Array.from(result.indexes).map((index) => items[index]);
+-> [
+  {
+    "options":["У меня даже пня нет"],
+    "data":{"id":3}
+  },{
+    "options":["У меня нет сна уже 3 день"],
+    "data":{"id":2}
+  }
+]
+
+const result = simpleCat.match('сон', 3);
+Array.from(result.indexes).map((index) => items[index]);
+-> [
+  {
+    "options":["У меня нет сна уже 3 день"],
+    "data":{"id":2}
+  }
+]
 ```

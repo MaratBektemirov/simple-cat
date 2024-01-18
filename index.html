@@ -1,0 +1,192 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <script>const exports = {};</script>
+  <script src="index.js"></script>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/default.min.css">
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+</head>
+
+<body>
+  <style>
+    body, input, textarea, h1, h2, h3, h4, button, figure, section, header, main, div, span, footer, a {
+      margin: 0;
+      padding: 0;
+      border: 0;
+      -webkit-font-smoothing: subpixel-antialiased;
+      box-sizing: border-box;
+      text-decoration: none;
+    }
+
+    .logo {
+      margin-top: 20px;
+    }
+
+    .main-container {
+      max-width: 980px;
+      margin: auto;
+    }
+
+    .examples__container {
+      margin-top: 40px;
+    }
+
+    .examples__input {
+      outline: none;
+      font-size: 20px;
+      line-height: 27px;
+      border: 1px solid rgba(0,0,0,.25);
+      padding: 0 5px;
+    }
+
+    .examples__input-hint {
+      margin-top: 15px;
+      margin-bottom: 10px;
+      width: 100%;
+    }
+
+    .examples__input-block {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    .examples__button {
+      margin-left: 10px;
+      cursor: pointer;
+      padding: 0 19px;
+      height: 29px;
+      font-size: 20px;
+      line-height: 26px;
+      text-align: center;
+      color: #fff;
+      background-color: #2bca7d;
+      background-image: none;
+      white-space: nowrap;
+      position: relative;
+    }
+
+    .examples__output {
+      margin-top: 10px;
+    }
+  </style>
+
+  <div class="main-container">
+    <img src="logo.png" width="500" height="69" class="logo">
+    <div class="examples"></div>
+  </div>
+
+  <script>
+    const examples = [{
+      hint: 'Можете попробовать это: пагода, пискарь или ахота, ясный, ромио',
+      title: 'Алгоритм нечеткого поиска, возможность выдачи при опечатках пользователя',
+      code: `const items = [
+    {
+      options: ['Премудрый пескарь'],
+      data: {id: 1},
+    },
+    {
+      options: ['Ясная погода'],
+      data: {id: 2},
+    },
+    {
+      options: ['Ромео и Джульетта'],
+      data: {id: 3},
+    },
+    {
+      options: ['Соколиная охота'],
+      data: {id: 4},
+    },
+    {
+      options: ['Ясный код'],
+      data: {id: 5},
+    },
+  ];
+
+const simpleCat = new SimpleCat(items);
+const result = simpleCat.match(input.value, 3);
+outputData.value = Array.from(result.indexes).map((index) => items[index]);
+`, type: 'input',
+    },{
+      hint: 'Можете попробовать это: отец, дите, пень, сон',
+      title: 'Увеличение качества поиска в результате подключения расширения',
+      code: `const items = [
+    {
+      options: ['Отцы и дети'],
+      data: {id: 1},
+    },
+    {
+      options: ['У меня нет сна уже 3 день'],
+      data: {id: 2},
+    },
+    {
+      options: ['У меня даже пня нет'],
+      data: {id: 3},
+    },
+  ];
+
+const simpleCat = new SimpleCat(items, [SimpleCat.STUFF.extensions.ru.fluentVowels]);
+const result = simpleCat.match(input.value, 3);
+
+outputData.value = Array.from(result.indexes).map((index) => items[index]);`, type: 'input',
+    }];
+
+    const addExamples = () => {
+      let i = 0;
+
+      let html = '';
+
+      while (i < examples.length) {
+        let strEl = '';
+        const example = examples[i];
+
+        if (example.type === 'input') {
+          strEl = `<input type="text" class="examples__input examples__input-${i}">`;
+        } else if (example.type === 'textarea') {
+          strEl = `<textarea class="examples__input examples__input-${i}"></textarea>`;
+        }
+
+        html += `<div class="examples__container">
+            <h2>${example.title}</h2>
+            <pre><code class="language-javascript">${example.code}</code></pre>
+            <div class="examples__input-block">
+              <div class="examples__input-hint">${example.hint}</div>
+              ${strEl}
+              <div class="examples__button examples__button-${i}">ок</div>
+            </div>
+            <div class="examples__output examples__output-${i}"></div>
+          </div>`;
+
+        i++;
+      }
+
+      document.querySelector('.examples').innerHTML = html;
+
+      i = 0;
+
+      while (i < examples.length) {
+        const input = document.querySelector(`.examples__input-${i}`);
+        const button = document.querySelector(`.examples__button-${i}`);
+        const output = document.querySelector(`.examples__output-${i}`);
+
+        const example = examples[i];
+
+        button.addEventListener('click', () => {
+          const outputData = {value: null};
+          eval(example.code);
+          output.innerHTML = `<pre><code class="language-json">${JSON.stringify(outputData.value)}</code></pre>`;
+          hljs.highlightAll();
+        })
+
+        i++;
+      }
+    }
+
+    addExamples();
+    hljs.highlightAll();
+  </script>
+</body>
+
+</html>

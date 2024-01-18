@@ -1,14 +1,11 @@
 const { 
-  getNGrams,
-  VectorFindVacantIndex,
-  VectorShiftRight,
-  standartTextModel,
-  standartWeightFunction,
-  getMatchVector,
+  SimpleCat,
 } = require('../index.js');
 
+const simpleCat = new SimpleCat([]);
+
 test('check grams 1', () => {
-  const { grams } = getNGrams(['проверка'], 3);
+  const { grams } = simpleCat.getNGramsModel('проверка', 3, []);
 
   expect(grams).toStrictEqual({
     'про': {positions: [new Int16Array([0,0])], indexes: [0]},
@@ -21,7 +18,7 @@ test('check grams 1', () => {
 });
 
 test('check grams 2', () => {
-  const { grams } = getNGrams(['парампампам'], 3);
+  const { grams } = simpleCat.getNGramsModel('парампампам', 3, []);
 
   expect(grams).toStrictEqual({
     'пар': {positions: [new Int16Array([0,0])], indexes: [0]},
@@ -34,7 +31,7 @@ test('check grams 2', () => {
 });
 
 test('check grams 3', () => {
-  const { grams } = getNGrams(['проверка'], 2);
+  const { grams } = simpleCat.getNGramsModel('проверка', 2, []);
 
   expect(grams).toStrictEqual({
     'пр': {positions: [new Int16Array([0,0])], indexes: [0]},
@@ -48,7 +45,7 @@ test('check grams 3', () => {
 });
 
 test('check grams 4', () => {
-  const { grams } = getNGrams(['парампампампам'], 3);
+  const { grams } = simpleCat.getNGramsModel('парампампампам', 3, []);
 
   expect(grams).toStrictEqual({
     'амп': {positions: [new Int16Array([0,3]), new Int16Array([0,6]), new Int16Array([0,9])], indexes: [3,6,9]},
@@ -62,10 +59,10 @@ test('check grams 4', () => {
 
 test('check match score 1', () => {
   const checkMatchScore = () => {
-    const templateModel = standartTextModel('размышление');
-    const searchModel = standartTextModel('размышляющий');
+    const templateModel = simpleCat.getNGramsModel('размышление', 3, []);
+    const searchModel = simpleCat.getNGramsModel('размышляющий', 3, []);
 
-    return getMatchVector(templateModel, searchModel, standartWeightFunction);
+    return simpleCat.getMatchVector(templateModel, searchModel, simpleCat.weightFunction);
   }
  
   expect(checkMatchScore()).toStrictEqual(new Int16Array([15,15,15,15,15]));
@@ -73,10 +70,10 @@ test('check match score 1', () => {
 
 test('check match score 2', () => {
   const checkMatchScore = () => {
-    const templateModel = standartTextModel('размышление');
-    const searchModel = standartTextModel('размышления');
+    const templateModel = simpleCat.getNGramsModel('размышление', 3, []);
+    const searchModel = simpleCat.getNGramsModel('размышления', 3, []);
 
-    return getMatchVector(templateModel, searchModel, standartWeightFunction);
+    return simpleCat.getMatchVector(templateModel, searchModel, simpleCat.weightFunction);
   }
  
   expect(checkMatchScore()).toStrictEqual(new Int16Array([15,15,15,15,15,15,15,15]));
@@ -84,60 +81,60 @@ test('check match score 2', () => {
 
 test('check match score 3', () => {
   const checkMatchScore = () => {
-    const templateModel = standartTextModel('парампампампам');
-    const searchModel = standartTextModel('парампампампам');
+    const templateModel = simpleCat.getNGramsModel('парампампампам', 3, []);
+    const searchModel = simpleCat.getNGramsModel('парампампампам', 3, []);
 
-    return getMatchVector(templateModel, searchModel, standartWeightFunction);
+    return simpleCat.getMatchVector(templateModel, searchModel, simpleCat.weightFunction);
   }
  
   expect(checkMatchScore()).toStrictEqual(new Int16Array([15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15]));
 });
 
 test('check match score 4', () => {
-  const templateModel = standartTextModel('парампампамляля');
-  const searchModel = standartTextModel('парампампам');
+  const templateModel = simpleCat.getNGramsModel('парампампамляля', 3, []);
+  const searchModel = simpleCat.getNGramsModel('парампампам', 3, []);
 
-  expect(getMatchVector(templateModel, searchModel, standartWeightFunction)).toStrictEqual(new Int16Array([15, 15, 15, 15, 15, 15, 15, 15, 15]))
+  expect(simpleCat.getMatchVector(templateModel, searchModel, simpleCat.weightFunction)).toStrictEqual(new Int16Array([15, 15, 15, 15, 15, 15, 15, 15, 15]))
 })
 
 test('check match score 5', () => {
-  const templateModel = standartTextModel('парампампампам');
-  const searchModel = standartTextModel('парампампампам');
+  const templateModel = simpleCat.getNGramsModel('парампампампам', 3, []);
+  const searchModel = simpleCat.getNGramsModel('парампампампам', 3, []);
 
-  expect(getMatchVector(templateModel, searchModel, standartWeightFunction)).toStrictEqual(new Int16Array([15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15]))
+  expect(simpleCat.getMatchVector(templateModel, searchModel, simpleCat.weightFunction)).toStrictEqual(new Int16Array([15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15]))
 })
 
 test('check match score 6', () => {
-  const templateModel = standartTextModel('парампампампам');
-  const searchModel = standartTextModel('слово');
+  const templateModel = simpleCat.getNGramsModel('парампампампам', 3, []);
+  const searchModel = simpleCat.getNGramsModel('слово', 3, []);
 
-  expect(getMatchVector(templateModel, searchModel, standartWeightFunction)).toStrictEqual(new Int16Array([]))
+  expect(simpleCat.getMatchVector(templateModel, searchModel, simpleCat.weightFunction)).toStrictEqual(new Int16Array([]))
 })
 
 test('vector find vacant index 1', () => {
-  expect(VectorFindVacantIndex(new Int16Array([5,4,3,2,1]), 5)).toBe(1)
+  expect(simpleCat.vectorFindVacantIndex(new Int16Array([5,4,3,2,1]), 5)).toBe(1)
 })
 
 test('vector find vacant index 2', () => {
-  expect(VectorFindVacantIndex(new Int16Array([5,4,3,2,1]), 3.5)).toBe(2)
+  expect(simpleCat.vectorFindVacantIndex(new Int16Array([5,4,3,2,1]), 3.5)).toBe(2)
 })
 
 test('vector find vacant index 3', () => {
-  expect(VectorFindVacantIndex(new Int16Array([5,4,3,2,1]), 0.8)).toBe(-1)
+  expect(simpleCat.vectorFindVacantIndex(new Int16Array([5,4,3,2,1]), 0.8)).toBe(-1)
 })
 
 test('vector find vacant index 4', () => {
-  expect(VectorFindVacantIndex(new Int16Array([5,4,3,2,1]), 5.2)).toBe(0)
+  expect(simpleCat.vectorFindVacantIndex(new Int16Array([5,4,3,2,1]), 5.2)).toBe(0)
 })
 
 test('vector shift right 1', () => {
-  expect(VectorShiftRight(new Int16Array([5,4,3,2,1]), 5.5, 0)).toStrictEqual(new Int16Array([5.5,5,4,3,2]))
+  expect(simpleCat.vectorShiftRight(new Int16Array([5,4,3,2,1]), 5.5, 0)).toStrictEqual(new Int16Array([5.5,5,4,3,2]))
 })
 
 test('vector shift right 2', () => {
-  expect(VectorShiftRight(new Int16Array([5,4,3,2,1]), 4.4, 1)).toStrictEqual(new Int16Array([5,4.4,4,3,2]))
+  expect(simpleCat.vectorShiftRight(new Int16Array([5,4,3,2,1]), 4.4, 1)).toStrictEqual(new Int16Array([5,4.4,4,3,2]))
 })
 
 test('vector shift right 3', () => {
-  expect(VectorShiftRight(new Int16Array([5,4,3,2,1]), 1.4, 4)).toStrictEqual(new Int16Array([5,4,3,2,1.4]))
+  expect(simpleCat.vectorShiftRight(new Int16Array([5,4,3,2,1]), 1.4, 4)).toStrictEqual(new Int16Array([5,4,3,2,1.4]))
 })

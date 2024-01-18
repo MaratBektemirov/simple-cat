@@ -1,8 +1,14 @@
 {
     "name": "simple-cat",
-    "version": "1.0.2",
-    "author": "kodoi",
-    "description": "Light tool for text classification",
+    "version": "1.0.95",
+    "author": "Marat Bektemirov",
+    "description": "Tool for approximate string matching",
+    "keywords": [
+      "Approximate string matching",
+      "fuzzy text search",
+      "fuzzy search algorithm",
+      "fuzzy string matching"
+    ],
     "scripts": {
       "test-functions": "jest test-functions.js",
       "test": "jest test-classification.js",
