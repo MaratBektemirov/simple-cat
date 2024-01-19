@@ -185,8 +185,8 @@ class SimpleCat<D> {
         return { grams, length };
     }
     
-    getMatchVector(templateModel: IGramModel, searchModel: IGramModel, weightFunction: WeightFunction) {
-        const vector = [];
+    getMatchWeights(templateModel: IGramModel, searchModel: IGramModel, weightFunction: WeightFunction) {
+        const weights = [];
     
         for (const searchGram of Object.keys(searchModel.grams)) {
             const templateGramPositions = templateModel.grams[searchGram];
@@ -206,17 +206,17 @@ class SimpleCat<D> {
                 }
     
                 const weight = weightFunction(templatePositions, searchPositions);
-                vector.push(weight);
+                weights.push(weight);
                 i++;
             }
         }
     
-        return new Int16Array(vector);
+        return new Int16Array(weights);
     }
 
     scorePredicate(score: number) {return score > 0}
     indexPredicate(index: number) {return index > -1}
-    matchVectorReducer(acc: number, weight: number) {return acc + weight};
+    matchWeightsReducer(acc: number, weight: number) {return acc + weight};
 
     vectorFindVacantIndex(vector: Int16Array, candidate: number) {
         let i = 0;
@@ -277,9 +277,9 @@ class SimpleCat<D> {
             while (j < this._models[i].length) {
                 const templateModel = this._models[i][j].model;
 
-                const matchVector = this.getMatchVector(templateModel, searchModel, this.weightFunction);
+                const matchWeights = this.getMatchWeights(templateModel, searchModel, this.weightFunction);
 
-                const score = matchVector.reduce(this.matchVectorReducer, 0);
+                const score = matchWeights.reduce(this.matchWeightsReducer, 0);
     
                 const vacantIndex = this.vectorFindVacantIndex(topScoresVector, score);
     

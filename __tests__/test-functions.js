@@ -62,7 +62,7 @@ test('check match score 1', () => {
     const templateModel = simpleCat.getNGramsModel('размышление', 3, []);
     const searchModel = simpleCat.getNGramsModel('размышляющий', 3, []);
 
-    return simpleCat.getMatchVector(templateModel, searchModel, simpleCat.weightFunction);
+    return simpleCat.getMatchWeights(templateModel, searchModel, simpleCat.weightFunction);
   }
  
   expect(checkMatchScore()).toStrictEqual(new Int16Array([15,15,15,15,15]));
@@ -73,7 +73,7 @@ test('check match score 2', () => {
     const templateModel = simpleCat.getNGramsModel('размышление', 3, []);
     const searchModel = simpleCat.getNGramsModel('размышления', 3, []);
 
-    return simpleCat.getMatchVector(templateModel, searchModel, simpleCat.weightFunction);
+    return simpleCat.getMatchWeights(templateModel, searchModel, simpleCat.weightFunction);
   }
  
   expect(checkMatchScore()).toStrictEqual(new Int16Array([15,15,15,15,15,15,15,15]));
@@ -84,7 +84,7 @@ test('check match score 3', () => {
     const templateModel = simpleCat.getNGramsModel('парампампампам', 3, []);
     const searchModel = simpleCat.getNGramsModel('парампампампам', 3, []);
 
-    return simpleCat.getMatchVector(templateModel, searchModel, simpleCat.weightFunction);
+    return simpleCat.getMatchWeights(templateModel, searchModel, simpleCat.weightFunction);
   }
  
   expect(checkMatchScore()).toStrictEqual(new Int16Array([15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15]));
@@ -94,21 +94,21 @@ test('check match score 4', () => {
   const templateModel = simpleCat.getNGramsModel('парампампамляля', 3, []);
   const searchModel = simpleCat.getNGramsModel('парампампам', 3, []);
 
-  expect(simpleCat.getMatchVector(templateModel, searchModel, simpleCat.weightFunction)).toStrictEqual(new Int16Array([15, 15, 15, 15, 15, 15, 15, 15, 15]))
+  expect(simpleCat.getMatchWeights(templateModel, searchModel, simpleCat.weightFunction)).toStrictEqual(new Int16Array([15, 15, 15, 15, 15, 15, 15, 15, 15]))
 })
 
 test('check match score 5', () => {
   const templateModel = simpleCat.getNGramsModel('парампампампам', 3, []);
   const searchModel = simpleCat.getNGramsModel('парампампампам', 3, []);
 
-  expect(simpleCat.getMatchVector(templateModel, searchModel, simpleCat.weightFunction)).toStrictEqual(new Int16Array([15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15]))
+  expect(simpleCat.getMatchWeights(templateModel, searchModel, simpleCat.weightFunction)).toStrictEqual(new Int16Array([15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15]))
 })
 
 test('check match score 6', () => {
   const templateModel = simpleCat.getNGramsModel('парампампампам', 3, []);
   const searchModel = simpleCat.getNGramsModel('слово', 3, []);
 
-  expect(simpleCat.getMatchVector(templateModel, searchModel, simpleCat.weightFunction)).toStrictEqual(new Int16Array([]))
+  expect(simpleCat.getMatchWeights(templateModel, searchModel, simpleCat.weightFunction)).toStrictEqual(new Int16Array([]))
 })
 
 test('vector find vacant index 1', () => {

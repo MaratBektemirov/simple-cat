@@ -73,10 +73,10 @@ declare class SimpleCat<D> {
         grams: NGrams;
         length: number;
     };
-    getMatchVector(templateModel: IGramModel, searchModel: IGramModel, weightFunction: WeightFunction): Int16Array;
+    getMatchWeights(templateModel: IGramModel, searchModel: IGramModel, weightFunction: WeightFunction): Int16Array;
     scorePredicate(score: number): boolean;
     indexPredicate(index: number): boolean;
-    matchVectorReducer(acc: number, weight: number): number;
+    matchWeightsReducer(acc: number, weight: number): number;
     vectorFindVacantIndex(vector: Int16Array, candidate: number): number;
     vectorShiftRight(vector: Int16Array, value: number, index: number): Int16Array;
     weightFunction: WeightFunction;

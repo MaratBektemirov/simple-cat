@@ -145,8 +145,8 @@ var SimpleCat = /** @class */ (function () {
         var length = absoluteGramIndex;
         return { grams: grams, length: length };
     };
-    SimpleCat.prototype.getMatchVector = function (templateModel, searchModel, weightFunction) {
-        var vector = [];
+    SimpleCat.prototype.getMatchWeights = function (templateModel, searchModel, weightFunction) {
+        var weights = [];
         for (var _i = 0, _a = Object.keys(searchModel.grams); _i < _a.length; _i++) {
             var searchGram = _a[_i];
             var templateGramPositions = templateModel.grams[searchGram];
@@ -161,15 +161,15 @@ var SimpleCat = /** @class */ (function () {
                     break;
                 }
                 var weight = weightFunction(templatePositions, searchPositions);
-                vector.push(weight);
+                weights.push(weight);
                 i++;
             }
         }
-        return new Int16Array(vector);
+        return new Int16Array(weights);
     };
     SimpleCat.prototype.scorePredicate = function (score) { return score > 0; };
     SimpleCat.prototype.indexPredicate = function (index) { return index > -1; };
-    SimpleCat.prototype.matchVectorReducer = function (acc, weight) { return acc + weight; };
+    SimpleCat.prototype.matchWeightsReducer = function (acc, weight) { return acc + weight; };
     ;
     SimpleCat.prototype.vectorFindVacantIndex = function (vector, candidate) {
         var i = 0;
@@ -202,8 +202,8 @@ var SimpleCat = /** @class */ (function () {
             var j = 0;
             while (j < this._models[i].length) {
                 var templateModel = this._models[i][j].model;
-                var matchVector = this.getMatchVector(templateModel, searchModel, this.weightFunction);
-                var score = matchVector.reduce(this.matchVectorReducer, 0);
+                var matchWeights = this.getMatchWeights(templateModel, searchModel, this.weightFunction);
+                var score = matchWeights.reduce(this.matchWeightsReducer, 0);
                 var vacantIndex = this.vectorFindVacantIndex(topScoresVector, score);
                 if (vacantIndex > -1) {
                     this.vectorShiftRight(topScoresVector, score, vacantIndex);
