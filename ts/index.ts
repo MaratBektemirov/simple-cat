@@ -1,103 +1,42 @@
-type TextToGramModel = (text: string, gramSize: number, extensions: ITextExtension[]) => IGramModel;
-type WeightFunction = (templatePositions: Int16Array, searchPositions: Int16Array) => number;
-type NGrams = {[key: string]: {positions: Int16Array[], indexes: number[]}};
+interface ITextChar {
+    [key: string]: number[],
+}  
 
-interface IGramModel {
-    grams: NGrams;
-    length: number;
+interface IText {
+    chars: {[key: string]: ITextChar},
+    wordsLength: {[key: string]: number},
 }
 
-interface IGramModelWrapper<A> {
-    model: IGramModel,
+interface ITextCharsWrapper<A> {
+    text: IText,
     data: A,
 }
 
 interface ITextOption<A> {
-    options: string[],
-    data: A
+    options: string[];
+    data: A;
 }
 
-type ITextExtension = (wordsAcc: string[]) => any;
-
-const STUFF = {
-    wordRegexp: /[^A-Za-zА-Яа-я ]/g,
-    splitWordRegexp: /\s+/g,
-    symbols: {
-        ru: {
-            vowel: {
-                а: "а",
-                и: "и",
-                й: "й",
-                о: "о",
-                у: "у",
-                ы: "ы",
-                э: "э",
-                е: "е",
-                я: "я",
-                ь: "ь",
-            },
-            consonant: {
-                б: "б",
-                в: "в",
-                г: "г",
-                д: "д",
-                ж: "ж",
-                з: "з",
-                й: "й",
-                к: "к",
-                л: "л",
-                м: "м",
-                н: "н",
-                п: "п",
-                р: "р",
-                с: "с",
-                т: "т",
-                ф: "ф",
-                х: "х",
-                ц: "ц",
-                ч: "ч",
-                ш: "ш",
-                щ: "щ",
-            }
-        }
-    },
-    extensions: {
-        ru: {
-            fluentVowels: (wordsAcc: string[]) => {
-                const ruVowelSymbols = STUFF.symbols.ru.vowel;
-
-                const word = wordsAcc[0];
-
-                if (!word) {
-                    return;
-                }
-
-                let wordWithoutVowel = word[0];
-                let i = 1;
-    
-                while (i < word.length) {
-                    if (!ruVowelSymbols[word[i]]) {
-                        wordWithoutVowel += word[i];
-                    }
-    
-                    i++;
-                }
-                
-                wordsAcc.push(wordWithoutVowel);
-            }
-        },
-    }
+interface IMatchResultHash {
+    [key: string]: {[key: string]: IMatchResult}
 }
+
+type IMatchResult = [number[], number[]];
+
+interface ISequencesHash {
+    [key: string]: ISequences;
+}
+
+type ISequences = [number[], number[]];
+type IWordScores = Int16Array[];
 
 class SimpleCat<D> {
-    static STUFF = STUFF;
-
-    private _models: IGramModelWrapper<D>[][] = [];
+    public splitWordRegexp = /\s+/g;
+    private _wrappers: ITextCharsWrapper<D>[][] = [];
 
     constructor(
         texts: ITextOption<D>[],
-        private extensions: ITextExtension[] = [],
-        private gramSize = 3,
+
     ) {
         let i = 0;
     
@@ -106,14 +45,15 @@ class SimpleCat<D> {
 
             let j = 0;
 
-            const models: IGramModelWrapper<D>[] = [];
+            const wrappers: ITextCharsWrapper<D>[] = [];
             
             while (j < options.length) {
-                const model = this.getNGramsModel(options[j], this.gramSize, this.extensions);
+                const words = this.textToWords(options[j]);
+                const text = this.getTextChars(words);
 
-                models.push(
+                wrappers.push(
                     {
-                        model,
+                        text,
                         data,
                     }
                 );
@@ -121,108 +61,253 @@ class SimpleCat<D> {
                 j++;
             }
 
-            this._models.push(models);
+            this._wrappers.push(wrappers);
 
             i++;
         }
     }
 
-    addGram(grams: NGrams, gram: string, absoluteGramIndex: number, wordIndex: number, gramInWordIndex: number) {
-        grams[gram] = grams[gram] || {positions: [], indexes: []};
-        grams[gram].positions.push(new Int16Array([wordIndex, gramInWordIndex]));
-        grams[gram].indexes.push(absoluteGramIndex);
-    };
+    textToWords(textStr: string) {
+        return textStr
+            .split(this.splitWordRegexp)
+            .map((word) => word.replace(/[^A-Za-zА-Яа-я ]/g, '').toLowerCase())
+            .filter((word) => word.length >= 3)
+    }
 
-    _getNGramsModel(words: string[], gramSize: number, extensions: ITextExtension[]) {    
-        const grams: NGrams = {};
-    
-        let w = 0;
-        let absoluteGramIndex = 0;
-    
-        while (w < words.length) {
-            const wordsAcc = [words[w].toLowerCase().replace(STUFF.wordRegexp, '')];
+    getTextScore(textStr: string, text: IText) {
+        const words = this.textToWords(textStr);
 
-            let e = 0;
-            while (e < extensions.length) {
-                extensions[e](wordsAcc);
-                e++;
+        let i = 0;
+        let score = 0;
+
+        while (i < words.length) {
+            const word = words[i];
+
+            const matchResultHash = this.getMatchResultHash(word, text);
+            const sequencesHash = this.getSequencesHash(matchResultHash);
+            const wordScores = this.getWordScores(sequencesHash);
+            this.minusAntiScoreFromWordScores(word, wordScores, text);
+
+            wordScores.sort((a,b) => b[1] - a[1]);
+
+            if (wordScores[0]) {
+                score += wordScores[0][1];
             }
 
-            let wa = 0;
-            while (wa < wordsAcc.length) {
-                const word = wordsAcc[wa];
+            i++;
+        }
 
-                if (word.length < gramSize) {
-                    if (word.length > 1) {
-                        this.addGram(grams, word, absoluteGramIndex, w, 0);
-                    }
+        return score;
+    }
 
-                    if (wa === 0) {
-                        absoluteGramIndex++;
-                    }
-                } else {
-                    let g = 0;
-                    while (word[g + gramSize - 1]) {
-                        let gram = word.slice(g, g + gramSize);
-                        this.addGram(grams, gram, absoluteGramIndex, w, g);
+    getWordScore(sequences: ISequences) {
+        let score = 0;
+
+        let i = 0;
+        while (i < sequences[0].length) {
+            if (typeof sequences[1][i] === 'number') {
+                score += 10;
+            }
+
+            if (sequences[0][i] === sequences[1][i]) {
+                score += 20;
+
+                if (sequences[0][i] === 1) {
+                    score += 120;
+                }
+            }
+
+            if (
+                typeof sequences[1][i] === 'number' &&
+                typeof sequences[1][i + 1] === 'number' &&
+                (sequences[0][i] - sequences[1][i]) === 
+                (sequences[0][i + 1] - sequences[1][i + 1])
+            ) {
+                score += 10;
+            }
+
+            i++;
+        }
+
+        return score;
+    }
+
+    scoreFilter(score: number) {
+        if (score >= 70) {
+            return true;
+        }
+
+        return false;
+    }
+
+    getWordScores(sequencesHash: ISequencesHash) {
+        const wordScores: IWordScores = [];
+
+        const wordIndexes = Object.keys(sequencesHash);
+
+        let j = 0;
+        while (j < wordIndexes.length) {
+            const wordIndex = wordIndexes[j];
+            const wordSequences = sequencesHash[wordIndex];
+            const score = this.getWordScore(wordSequences);
+
+            const arr = new Int16Array(2);
+            arr[0] = Number(wordIndex);
+            arr[1] = score;
+
+            wordScores.push(arr);
             
-                        g++;
-
-                        if (wa === 0) {
-                            absoluteGramIndex++;
-                        }
-                    }
-                }
-
-                wa++;
-            }
-    
-            w++;
+            j++;
         }
-    
-        const length = absoluteGramIndex;
-    
-        return { grams, length };
-    }
-    
-    getMatchWeights(templateModel: IGramModel, searchModel: IGramModel, weightFunction: WeightFunction) {
-        const weights = [];
-    
-        for (const searchGram of Object.keys(searchModel.grams)) {
-            const templateGramPositions = templateModel.grams[searchGram];
-    
-            if (!templateGramPositions) continue;
-    
-            const searchGramPositions = searchModel.grams[searchGram];
-    
-            let i = 0;
-    
-            while (i < templateGramPositions.indexes.length) {
-                const templatePositions = templateGramPositions.positions[i];
-                const searchPositions = searchGramPositions.positions[i];
-    
-                if (!searchPositions) {
-                    break;
-                }
-    
-                const weight = weightFunction(templatePositions, searchPositions);
-                weights.push(weight);
-                i++;
-            }
-        }
-    
-        return new Int16Array(weights);
+
+        return wordScores;
     }
 
-    scorePredicate(score: number) {return score > 0}
-    indexPredicate(index: number) {return index > -1}
-    matchWeightsReducer(acc: number, weight: number) {return acc + weight};
+    minusAntiScoreFromWordScores(word: string, wordScores: IWordScores, text: IText): IWordScores {
+        let j = 0;
+        while (j < wordScores.length) {
+            const wordIndex = wordScores[j][0];
+            const lengthDiff = Math.abs(text.wordsLength[wordIndex] - word.length) * 35;
+            wordScores[j][1] -= lengthDiff;
+            j++;
+        }
 
-    vectorFindVacantIndex(vector: Int16Array, candidate: number) {
+        return wordScores;
+    }
+
+    accSequences(
+        matchResultArr: IMatchResult[],
+        original: number[], 
+        compared: number[],
+        i: number
+    ) {
+        let next = false;
+
+        let k = 0;
+        while (k < matchResultArr.length) {
+            const originalIndex = matchResultArr[k][0][i];
+            const comparedIndex = matchResultArr[k][1][i];
+
+            if (typeof matchResultArr[k][0][i + 1] === 'number') {
+                next = true;
+            }
+
+            if (typeof originalIndex === 'number') {
+                original.push(originalIndex);
+                compared.push(comparedIndex);
+            }
+
+            k++;
+        }
+
+        if (next) {
+            this.accSequences(matchResultArr, original, compared, i + 1);
+        }
+    }
+
+    getSequencesHash(matchResultHash: IMatchResultHash): ISequencesHash {
+        const sequencesHash = {};
+
+        const wordIndexes = Object.keys(matchResultHash);
+
         let i = 0;
 
-        while (i < vector.length) {
-            if (candidate > vector[i]) {
+        while (i < wordIndexes.length) {
+            const wordIndex = wordIndexes[i];
+            const wordMatchResult = matchResultHash[wordIndex];
+            const chars = Object.keys(wordMatchResult);
+
+            const matchResultArr: IMatchResult[] = [];
+
+            let j = 0;
+            while (j < chars.length) {
+                const char = chars[j];
+                matchResultArr.push(wordMatchResult[char]);
+                j++;
+            }
+
+            matchResultArr.sort((a,b) => a[0][0] - b[0][0]);
+
+            const original = [];
+            const compared = [];
+
+            this.accSequences(matchResultArr, original, compared, 0);
+
+            sequencesHash[wordIndex] = [original, compared];
+
+            i++;
+        }
+
+        return sequencesHash;
+    }
+    
+    getMatchResultHash(word: string, textChars: IText) {
+        const matchResultHash: IMatchResultHash = {};
+
+        let charIndex = 0;
+        while (charIndex < word.length) {
+            const char = textChars.chars[word[charIndex]];
+
+            if (char) {
+                const wordIndexes = Object.keys(char);
+
+                let j = 0;
+                while (j < wordIndexes.length) {
+                    const wordIndex = wordIndexes[j];
+
+                    matchResultHash[wordIndex] = matchResultHash[wordIndex] || {};
+                    matchResultHash[wordIndex][word[charIndex]] = matchResultHash[wordIndex][word[charIndex]] || [[],[]];
+
+                    const original = matchResultHash[wordIndex][word[charIndex]][0];
+                    const compared = matchResultHash[wordIndex][word[charIndex]][1];
+
+                    compared.push(char[wordIndex][original.length] || null);
+                    original.push(charIndex + 1);
+
+                    j++;
+                }    
+            }
+
+            charIndex++;
+        }
+
+        return matchResultHash;
+    }
+
+    getTextChars(words: string[]): IText {
+        const chars = {};
+        const wordsLength = {};
+        const text: IText = {chars, wordsLength};
+
+        let wordIndex = 0;
+
+        while (wordIndex < words.length) {
+            const word = words[wordIndex];
+            wordsLength[wordIndex] = word.length;
+
+            let charIndex = 0;
+            while (charIndex < word.length) {
+                let ch = word[charIndex];
+                const match: ITextChar = chars[ch] = chars[ch] || {};
+                match[wordIndex] = match[wordIndex] || [];
+                match[wordIndex].push(charIndex + 1);
+                charIndex++;
+            }
+
+            wordIndex++;
+        }
+
+        return text;
+    }
+    
+    indexPredicate(index: number) {return index > -1}
+    scorePredicate(score: number) {return score > 0}
+
+    arrFindVacantIndex(arr: Int16Array, candidate: number) {
+        let i = 0;
+
+        while (i < arr.length) {
+            if (candidate > arr[i]) {
                 return i;
             }
 
@@ -232,61 +317,45 @@ class SimpleCat<D> {
         return -1;
     }
 
-    vectorShiftRight(vector: Int16Array, value: number, index: number) {
-        let i = vector.length - 1;
+    arrShiftRight(arr: Int16Array, value: number, index: number) {
+        let i = arr.length - 1;
 
         while (i > index) {
-            vector[i] = vector[i - 1];
+            arr[i] = arr[i - 1];
             i--;
         }
 
-        vector[index] = value;
+        arr[index] = value;
 
-        return vector;
+        return arr;
     }
 
-    weightFunction: WeightFunction = (templatePositions, searchPositions) => {
-        const wordIndexDiff = Math.abs(templatePositions[0] - searchPositions[0]) * 1;
-        const gramIndexInWordDiff = Math.abs(templatePositions[1] - searchPositions[1]) * 4
-        const positionWeight = 5 - wordIndexDiff - gramIndexInWordDiff;
+    match(textStr: string, top: number) {
+        const topScores = new Int16Array(top);
 
-        return 10 + Math.max(0, positionWeight);    
-    }
+        const topIndex = new Int16Array(top);
+        topIndex.fill(-1);
 
-    getNGramsModel: TextToGramModel = (text: string, gramSize: number, extensions: ITextExtension[]) => {
-        const words = text.split(SimpleCat.STUFF.splitWordRegexp);
-
-        return this._getNGramsModel(words, gramSize, extensions);
-    }
-
-    match(text: string, top: number) {
-        const searchModel = this.getNGramsModel(text, this.gramSize, this.extensions);
-
-        const topScoresVector = new Int16Array(top);
-
-        const topIndexVector = new Int16Array(top);
-        topIndexVector.fill(-1);
-
-        const topOptionVector = new Int16Array(top);
-        topOptionVector.fill(-1);
+        const topOption = new Int16Array(top);
+        topOption.fill(-1);
         
         let i = 0;
-        while (i < this._models.length) {
+        while (i < this._wrappers.length) {
             let j = 0;
 
-            while (j < this._models[i].length) {
-                const templateModel = this._models[i][j].model;
+            while (j < this._wrappers[i].length) {
+                const textChars = this._wrappers[i][j].text;
 
-                const matchWeights = this.getMatchWeights(templateModel, searchModel, this.weightFunction);
+                const score = this.getTextScore(textStr, textChars);
 
-                const score = matchWeights.reduce(this.matchWeightsReducer, 0);
+                if (this.scoreFilter(score)) {
+                    const vacantIndex = this.arrFindVacantIndex(topScores, score);
     
-                const vacantIndex = this.vectorFindVacantIndex(topScoresVector, score);
-    
-                if (vacantIndex > -1) {
-                    this.vectorShiftRight(topScoresVector, score, vacantIndex);
-                    this.vectorShiftRight(topIndexVector, i, vacantIndex);
-                    this.vectorShiftRight(topOptionVector, j, vacantIndex);
+                    if (vacantIndex > -1) {
+                        this.arrShiftRight(topScores, score, vacantIndex);
+                        this.arrShiftRight(topIndex, i, vacantIndex);
+                        this.arrShiftRight(topOption, j, vacantIndex);
+                    }
                 }
 
                 j++;
@@ -296,13 +365,11 @@ class SimpleCat<D> {
         }
 
         return {
-            scores: topScoresVector.filter(this.scorePredicate),
-            indexes: topIndexVector.filter(this.indexPredicate),
-            options: topOptionVector.filter(this.indexPredicate),
+            scores: topScores.filter(this.scorePredicate),
+            indexes: topIndex.filter(this.indexPredicate),
+            options: topOption.filter(this.indexPredicate),
         };
     }
 }
 
-export {
-    SimpleCat,
-}
+export { SimpleCat }

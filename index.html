@@ -3,7 +3,6 @@
 
 <head>
   <meta charset="utf-8">
-  <script>const exports = {};</script>
   <script src="index.js"></script>
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/default.min.css">
@@ -80,7 +79,7 @@
 
   <script>
     const examples = [{
-      hint: 'Можете попробовать это: пагода, пискарь или ахота, ясный, ромио',
+      hint: 'Можете попробовать это: пагода, пискарь или ахота, ясный, ромио, отец, дите, пень, сон',
       title: 'Алгоритм нечеткого поиска, возможность выдачи при опечатках пользователя',
       code: `const items = [
     {
@@ -103,34 +102,24 @@
       options: ['Ясный код'],
       data: {id: 5},
     },
+    {
+      options: ['Отцы и дети'],
+      data: {id: 6},
+    },
+    {
+      options: ['У меня нет сна уже 3 день'],
+      data: {id: 7},
+    },
+    {
+      options: ['У меня даже пня нет'],
+      data: {id: 8},
+    },
   ];
 
 const simpleCat = new SimpleCat(items);
 const result = simpleCat.match(input.value, 3);
 outputData.value = Array.from(result.indexes).map((index) => items[index]);
 `, type: 'input',
-    },{
-      hint: 'Можете попробовать это: отец, дите, пень, сон',
-      title: 'Увеличение качества поиска в результате подключения расширения',
-      code: `const items = [
-    {
-      options: ['Отцы и дети'],
-      data: {id: 1},
-    },
-    {
-      options: ['У меня нет сна уже 3 день'],
-      data: {id: 2},
-    },
-    {
-      options: ['У меня даже пня нет'],
-      data: {id: 3},
-    },
-  ];
-
-const simpleCat = new SimpleCat(items, [SimpleCat.STUFF.extensions.ru.fluentVowels]);
-const result = simpleCat.match(input.value, 3);
-
-outputData.value = Array.from(result.indexes).map((index) => items[index]);`, type: 'input',
     }];
 
     const addExamples = () => {

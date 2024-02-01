@@ -10,9 +10,12 @@
 </div>
 
 Simple-cat это простой инструмент для нечеткого поиска, поиска с опечатками, приблизительного совпадения строк.
-Simple-cat в основе своей использует [N-грамм](https://ru.wikipedia.org/wiki/N-%D0%B3%D1%80%D0%B0%D0%BC%D0%BC%D0%B0), последовательности символов n-длины.
 
 Zero-dependency, меньше 2Kb в сжатом виде
+
+Simple-cat is a simple tool for fuzzy earch, and approximate string matching.
+
+Zero-dependency, less than 2Kb in compressed form
 
 ## Установка
 
@@ -20,13 +23,9 @@ Zero-dependency, меньше 2Kb в сжатом виде
 npm install simple-cat
 ```
 
-[Демо](https://maratbektemirov.github.io/simple-cat/)
+<font size = 7>[Демо](https://maratbektemirov.github.io/simple-cat/)</font>
 
 ## Примеры
-<br>
-
-### Алгоритм нечеткого поиска, возможность выдачи при опечатках пользователя
-
 ```typescript
 import { SimpleCat } from "simple-cat"
 
@@ -51,27 +50,37 @@ const items = [
       options: ['Ясный код'],
       data: {id: 5},
     },
+        {
+      options: ['Отцы и дети'],
+      data: {id: 6},
+    },
+    {
+      options: ['У меня нет сна уже 3 день'],
+      data: {id: 7},
+    },
+    {
+      options: ['У меня даже пня нет'],
+      data: {id: 8},
+    },
   ];
 
 const simpleCat = new SimpleCat(items);
 
 simpleCat.match('пагода', 3);
 -> {
-  "scores":{"0":28},
-  "indexes":{"0":1},
-  "options":{"0":0}
+  "scores": [230,125],
+  "indexes": [1,0],
+  "options": [0,0]
 }
 
 const result = simpleCat.match('пагода', 3);
 Array.from(result.indexes).map((index) => items[index]);
 -> [
-  {
-    "options":["Ясная погода"],
-    "data":{"id":2}
-  }
+  {"options":["Ясная погода"],"data":{"id":2}},
+  {"options":["Премудрый пескарь"],"data":{"id":1}}
 ]
 
-simpleCat.match('пискарь', 3);
+const result = simpleCat.match('пискарь', 3);
 Array.from(result.indexes).map((index) => items[index]);
 -> [
   {
@@ -80,7 +89,7 @@ Array.from(result.indexes).map((index) => items[index]);
   }
 ]
 
-simpleCat.match('ахота', 3);
+const result = simpleCat.match('ахота', 3);
 Array.from(result.indexes).map((index) => items[index]);
 -> [
   {
@@ -89,7 +98,7 @@ Array.from(result.indexes).map((index) => items[index]);
   }
 ]
 
-simpleCat.match('ясный', 3);
+const result = simpleCat.match('ясный', 3);
 Array.from(result.indexes).map((index) => items[index]);
 -> [
   {
@@ -101,75 +110,12 @@ Array.from(result.indexes).map((index) => items[index]);
   }
 ]
 
-simpleCat.match('ромио', 3);
+const result = simpleCat.match('ромио', 3);
 Array.from(result.indexes).map((index) => items[index]);
 -> [
   {
     "options":["Ромео и Джульетта"],
     "data":{"id":3}
-  }
-]
-```
-<br>
-
-### Увеличение качества поиска в результате подключения расширения
-
-```typescript
-import { SimpleCat } from "simple-cat"
-
-const items = [
-    {
-      options: ['Отцы и дети'],
-      data: {id: 1},
-    },
-    {
-      options: ['У меня нет сна уже 3 день'],
-      data: {id: 2},
-    },
-    {
-      options: ['У меня даже пня нет'],
-      data: {id: 3},
-    },
-];
-
-const simpleCat = new SimpleCat(items, [SimpleCat.STUFF.extensions.ru.fluentVowels]);
-
-const result = simpleCat.match('отец', 3);
-Array.from(result.indexes).map((index) => items[index]);
--> [
-  {
-    "options":["Отцы и дети"],
-    "data":{"id":1}
-  }
-]
-
-const result = simpleCat.match('дите', 3);
-Array.from(result.indexes).map((index) => items[index]);
--> [
-  {
-    "options":["Отцы и дети"],
-    "data":{"id":1}
-  }
-]
-
-const result = simpleCat.match('пень', 3);
-Array.from(result.indexes).map((index) => items[index]);
--> [
-  {
-    "options":["У меня даже пня нет"],
-    "data":{"id":3}
-  },{
-    "options":["У меня нет сна уже 3 день"],
-    "data":{"id":2}
-  }
-]
-
-const result = simpleCat.match('сон', 3);
-Array.from(result.indexes).map((index) => items[index]);
--> [
-  {
-    "options":["У меня нет сна уже 3 день"],
-    "data":{"id":2}
   }
 ]
 ```
