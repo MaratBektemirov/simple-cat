@@ -1,7 +1,7 @@
 interface ITextChar {
     [key: string]: number[];
 }
-interface IText {
+interface IPreparedText {
     chars: {
         [key: string]: ITextChar;
     };
@@ -29,15 +29,21 @@ declare class SimpleCat<D> {
     private _wrappers;
     constructor(texts: ITextOption<D>[]);
     textToWords(textStr: string): string[];
-    getTextScore(textStr: string, text: IText): number;
+    insertScoreToTable(scoresTable: {
+        [key: string]: IWordScores;
+    }, wordScores: IWordScores): void;
+    countScoresTable(scoresTable: {
+        [key: string]: IWordScores;
+    }): number;
+    getTextScore(textStr: string, preparedText: IPreparedText): number;
     getWordScore(sequences: ISequences): number;
     scoreFilter(score: number): boolean;
     getWordScores(sequencesHash: ISequencesHash): IWordScores;
-    minusAntiScoreFromWordScores(word: string, wordScores: IWordScores, text: IText): IWordScores;
+    minusAntiScoreFromWordScores(word: string, wordScores: IWordScores, text: IPreparedText): IWordScores;
     accSequences(matchResultArr: IMatchResult[], original: number[], compared: number[], i: number): void;
     getSequencesHash(matchResultHash: IMatchResultHash): ISequencesHash;
-    getMatchResultHash(word: string, textChars: IText): IMatchResultHash;
-    getTextChars(words: string[]): IText;
+    getMatchResultHash(word: string, preparedText: IPreparedText): IMatchResultHash;
+    getPreparedText(words: string[]): IPreparedText;
     indexPredicate(index: number): boolean;
     scorePredicate(score: number): boolean;
     arrFindVacantIndex(arr: Int16Array, candidate: number): number;

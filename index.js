@@ -14,7 +14,7 @@ var SimpleCat = /** @class */ (function () {
             var wrappers = [];
             while (j < options.length) {
                 var words = this.textToWords(options[j]);
-                var text = this.getTextChars(words);
+                var text = this.getPreparedText(words);
                 wrappers.push({
                     text: text,
                     data: data,
@@ -31,23 +31,51 @@ var SimpleCat = /** @class */ (function () {
             .map(function (word) { return word.replace(/[^A-Za-zА-Яа-я ]/g, '').toLowerCase(); })
             .filter(function (word) { return word.length >= 3; });
     };
-    SimpleCat.prototype.getTextScore = function (textStr, text) {
-        var words = this.textToWords(textStr);
+    SimpleCat.prototype.insertScoreToTable = function (scoresTable, wordScores) {
+        if (!wordScores[0]) {
+            return;
+        }
+        var wordIndex = wordScores[0][0];
+        var highScore = wordScores[0][1];
+        if (!scoresTable[wordIndex]) {
+            scoresTable[wordIndex] = wordScores;
+        }
+        else if (scoresTable[wordIndex] && highScore > scoresTable[wordIndex][0][1]) {
+            var departing = scoresTable[wordIndex];
+            departing.splice(0, 1);
+            this.insertScoreToTable(scoresTable, departing);
+            scoresTable[wordIndex] = wordScores;
+        }
+        else if (scoresTable[wordIndex] && highScore <= scoresTable[wordIndex][0][1]) {
+            wordScores.splice(0, 1);
+            this.insertScoreToTable(scoresTable, wordScores);
+        }
+    };
+    SimpleCat.prototype.countScoresTable = function (scoresTable) {
+        var count = 0;
+        var wordIndexes = Object.keys(scoresTable);
         var i = 0;
-        var score = 0;
-        while (i < words.length) {
-            var word = words[i];
-            var matchResultHash = this.getMatchResultHash(word, text);
-            var sequencesHash = this.getSequencesHash(matchResultHash);
-            var wordScores = this.getWordScores(sequencesHash);
-            this.minusAntiScoreFromWordScores(word, wordScores, text);
-            wordScores.sort(function (a, b) { return b[1] - a[1]; });
-            if (wordScores[0]) {
-                score += wordScores[0][1];
-            }
+        while (i < wordIndexes.length) {
+            count += scoresTable[wordIndexes[i]][0][1];
             i++;
         }
-        return score;
+        return count;
+    };
+    SimpleCat.prototype.getTextScore = function (textStr, preparedText) {
+        var words = this.textToWords(textStr);
+        var i = 0;
+        var scoresTable = {};
+        while (i < words.length) {
+            var word = words[i];
+            var matchResultHash = this.getMatchResultHash(word, preparedText);
+            var sequencesHash = this.getSequencesHash(matchResultHash);
+            var wordScores = this.getWordScores(sequencesHash);
+            this.minusAntiScoreFromWordScores(word, wordScores, preparedText);
+            wordScores.sort(function (a, b) { return b[1] - a[1]; });
+            this.insertScoreToTable(scoresTable, wordScores);
+            i++;
+        }
+        return this.countScoresTable(scoresTable);
     };
     SimpleCat.prototype.getWordScore = function (sequences) {
         var score = 0;
@@ -147,11 +175,11 @@ var SimpleCat = /** @class */ (function () {
         }
         return sequencesHash;
     };
-    SimpleCat.prototype.getMatchResultHash = function (word, textChars) {
+    SimpleCat.prototype.getMatchResultHash = function (word, preparedText) {
         var matchResultHash = {};
         var charIndex = 0;
         while (charIndex < word.length) {
-            var char = textChars.chars[word[charIndex]];
+            var char = preparedText.chars[word[charIndex]];
             if (char) {
                 var wordIndexes = Object.keys(char);
                 var j = 0;
@@ -170,7 +198,7 @@ var SimpleCat = /** @class */ (function () {
         }
         return matchResultHash;
     };
-    SimpleCat.prototype.getTextChars = function (words) {
+    SimpleCat.prototype.getPreparedText = function (words) {
         var chars = {};
         var wordsLength = {};
         var text = { chars: chars, wordsLength: wordsLength };
@@ -221,8 +249,8 @@ var SimpleCat = /** @class */ (function () {
         while (i < this._wrappers.length) {
             var j = 0;
             while (j < this._wrappers[i].length) {
-                var textChars = this._wrappers[i][j].text;
-                var score = this.getTextScore(textStr, textChars);
+                var preparedText = this._wrappers[i][j].text;
+                var score = this.getTextScore(textStr, preparedText);
                 if (this.scoreFilter(score)) {
                     var vacantIndex = this.arrFindVacantIndex(topScores, score);
                     if (vacantIndex > -1) {

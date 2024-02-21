@@ -2,13 +2,13 @@ interface ITextChar {
     [key: string]: number[],
 }  
 
-interface IText {
+interface IPreparedText {
     chars: {[key: string]: ITextChar},
     wordsLength: {[key: string]: number},
 }
 
 interface ITextCharsWrapper<A> {
-    text: IText,
+    text: IPreparedText,
     data: A,
 }
 
@@ -49,7 +49,7 @@ class SimpleCat<D> {
             
             while (j < options.length) {
                 const words = this.textToWords(options[j]);
-                const text = this.getTextChars(words);
+                const text = this.getPreparedText(words);
 
                 wrappers.push(
                     {
@@ -74,30 +74,67 @@ class SimpleCat<D> {
             .filter((word) => word.length >= 3)
     }
 
-    getTextScore(textStr: string, text: IText) {
+    insertScoreToTable(scoresTable: {[key: string]: IWordScores}, wordScores: IWordScores) {
+        if (!wordScores[0]) {
+            return;
+        }
+
+        const wordIndex = wordScores[0][0];
+        const highScore = wordScores[0][1];
+
+        if (!scoresTable[wordIndex]) {
+            scoresTable[wordIndex] = wordScores;
+        } else if (scoresTable[wordIndex] && highScore > scoresTable[wordIndex][0][1]) {
+            const departing = scoresTable[wordIndex];
+            departing.splice(0, 1);
+
+            this.insertScoreToTable(scoresTable, departing);
+            scoresTable[wordIndex] = wordScores;
+        } else if (scoresTable[wordIndex] && highScore <= scoresTable[wordIndex][0][1]) {
+            wordScores.splice(0, 1);
+
+            this.insertScoreToTable(scoresTable, wordScores);
+        }
+    }
+
+    countScoresTable(scoresTable: {[key: string]: IWordScores}) {
+        let count = 0;
+
+        const wordIndexes = Object.keys(scoresTable);
+
+        let i = 0;
+
+        while (i < wordIndexes.length) {
+            count += scoresTable[wordIndexes[i]][0][1];
+            i++;
+        }
+
+
+        return count;
+    }
+
+    getTextScore(textStr: string, preparedText: IPreparedText) {
         const words = this.textToWords(textStr);
 
         let i = 0;
-        let score = 0;
+
+        const scoresTable = {};
 
         while (i < words.length) {
             const word = words[i];
 
-            const matchResultHash = this.getMatchResultHash(word, text);
+            const matchResultHash = this.getMatchResultHash(word, preparedText);
             const sequencesHash = this.getSequencesHash(matchResultHash);
             const wordScores = this.getWordScores(sequencesHash);
-            this.minusAntiScoreFromWordScores(word, wordScores, text);
+            this.minusAntiScoreFromWordScores(word, wordScores, preparedText);
 
             wordScores.sort((a,b) => b[1] - a[1]);
 
-            if (wordScores[0]) {
-                score += wordScores[0][1];
-            }
-
+            this.insertScoreToTable(scoresTable, wordScores);
             i++;
         }
 
-        return score;
+        return this.countScoresTable(scoresTable);
     }
 
     getWordScore(sequences: ISequences) {
@@ -163,7 +200,7 @@ class SimpleCat<D> {
         return wordScores;
     }
 
-    minusAntiScoreFromWordScores(word: string, wordScores: IWordScores, text: IText): IWordScores {
+    minusAntiScoreFromWordScores(word: string, wordScores: IWordScores, text: IPreparedText): IWordScores {
         let j = 0;
         while (j < wordScores.length) {
             const wordIndex = wordScores[j][0];
@@ -241,12 +278,12 @@ class SimpleCat<D> {
         return sequencesHash;
     }
     
-    getMatchResultHash(word: string, textChars: IText) {
+    getMatchResultHash(word: string, preparedText: IPreparedText) {
         const matchResultHash: IMatchResultHash = {};
 
         let charIndex = 0;
         while (charIndex < word.length) {
-            const char = textChars.chars[word[charIndex]];
+            const char = preparedText.chars[word[charIndex]];
 
             if (char) {
                 const wordIndexes = Object.keys(char);
@@ -274,10 +311,10 @@ class SimpleCat<D> {
         return matchResultHash;
     }
 
-    getTextChars(words: string[]): IText {
+    getPreparedText(words: string[]): IPreparedText {
         const chars = {};
         const wordsLength = {};
-        const text: IText = {chars, wordsLength};
+        const text: IPreparedText = {chars, wordsLength};
 
         let wordIndex = 0;
 
@@ -344,9 +381,9 @@ class SimpleCat<D> {
             let j = 0;
 
             while (j < this._wrappers[i].length) {
-                const textChars = this._wrappers[i][j].text;
+                const preparedText = this._wrappers[i][j].text;
 
-                const score = this.getTextScore(textStr, textChars);
+                const score = this.getTextScore(textStr, preparedText);
 
                 if (this.scoreFilter(score)) {
                     const vacantIndex = this.arrFindVacantIndex(topScores, score);

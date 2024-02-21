@@ -5,17 +5,17 @@ const {
 const simpleCat = new SimpleCat([]);
 
 const words = simpleCat.textToWords('машина Маши стояла заведенная в селе, около завода россельмаш');
-const textChars = simpleCat.getTextChars(words);
+const preparedText = simpleCat.getPreparedText(words);
 
 test('text chars test 1 1', () => {
-  expect(textChars.chars['м']).toStrictEqual({"0":[1],"1":[1],"7":[8]})
+  expect(preparedText.chars['м']).toStrictEqual({"0":[1],"1":[1],"7":[8]})
 })
 
 test('text chars test 1 2', () => {
-  expect(textChars.chars['а']).toStrictEqual({"0":[2,6],"1":[2],"2":[6],"3":[2,9],"6":[2,6],"7":[9]})
+  expect(preparedText.chars['а']).toStrictEqual({"0":[2,6],"1":[2],"2":[6],"3":[2,9],"6":[2,6],"7":[9]})
 })
 
-const matchResultHash = simpleCat.getMatchResultHash('машина', textChars);
+const matchResultHash = simpleCat.getMatchResultHash('машина', preparedText);
 
 test('matching test 1 1', () => {
   expect(matchResultHash['7']).toStrictEqual({"м":[[1],[8]],"а":[[2,6],[9,null]],"ш":[[3],[10]]})
@@ -49,11 +49,29 @@ test('word scores 1 1', () => {
 })
 
 test('text scores 1 1', () => {
-  const score_1 = simpleCat.getTextScore('Маша стояла', textChars);
-  const score_2 = simpleCat.getTextScore('Машина в селе', textChars);
-  const score_3 = simpleCat.getTextScore('Завод россельмаш', textChars);
+  const score_1 = simpleCat.getTextScore('Маша стояла', preparedText);
+  const score_2 = simpleCat.getTextScore('Машина в селе', preparedText);
+  const score_3 = simpleCat.getTextScore('Завод россельмаш', preparedText);
 
   expect(score_3 > score_2 && score_2 > score_1).toStrictEqual(true);
+})
+
+test('table scores 1 1', () => {
+  const scoresTable = {};
+
+  simpleCat.insertScoreToTable(scoresTable, [new Int16Array([1, 50]), new Int16Array([6, 30]), new Int16Array([2, 20])]);
+  simpleCat.insertScoreToTable(scoresTable, [new Int16Array([1, 70]), new Int16Array([6, 40]), new Int16Array([2, 30])]);
+  simpleCat.insertScoreToTable(scoresTable, [new Int16Array([1, 80]), new Int16Array([6, 50]), new Int16Array([2, 40])]);
+
+  expect(scoresTable).toStrictEqual({
+    2: [ new Int16Array([ 2, 20 ]) ],
+    6: [ new Int16Array([ 6, 40 ]), new Int16Array([ 2, 30 ]) ],
+    1: [
+      new Int16Array([ 1, 80 ]),
+      new Int16Array([ 6, 50 ]),
+      new Int16Array([ 2, 40 ]),
+    ],
+  });
 })
 
 test('vector find vacant index 1', () => {
